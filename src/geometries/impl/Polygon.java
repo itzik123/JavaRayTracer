@@ -5,6 +5,8 @@ import static primitives.Util.isZero;
 import java.util.List;
 
 import geometries.api.Geometry;
+import primitives.Vector;
+import primitives.Point;
 
 /**
  * Represents a convex polygon in a 3D Cartesian coordinate system.
