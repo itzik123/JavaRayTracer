@@ -20,7 +20,7 @@ public class Point {
 
     /**
      * Constructor to initialize a Point based on a Double3 object.
-     * * @param xyz the 3D coordinates
+     * @param xyz the 3D coordinates
      */
     public Point(Double3 xyz) {
         _xyz = xyz;

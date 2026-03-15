@@ -34,7 +34,6 @@ public final class Util {
 
    /**
     * Extracts the unbiased exponent of a {@code double}.
-    * <p>
     * IEEE-754 double format:
     * 
     * <pre>
@@ -48,7 +47,6 @@ public final class Util {
     * </pre>
     * 
     * where the stored exponent is biased by 1023.
-    * </p>
     * @param  num the number
     * @return     the unbiased exponent
     */

@@ -9,7 +9,6 @@ import java.util.Objects;
 
 /**
  * Immutable container for three double values.
- * <p>
  * The class is used as a basic numeric structure in the primitives package.
  * Typical uses include:
  * <ul>
@@ -17,7 +16,6 @@ import java.util.Objects;
  * <li>Point or vector coordinates</li>
  * <li>Material or attenuation coefficients</li>
  * </ul>
- * </p>
  * This class is intentionally minimal and optimized for performance,
  * as it is heavily used in geometric and color computations. It performs no
  * argument validation (such as {@code null} checks or division-by-zero checks).
