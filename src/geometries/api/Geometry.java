@@ -4,7 +4,7 @@ import primitives.Point;
 import primitives.Vector;
 
 /**
- * Abstract class - simple representation of geometry objects
+ * Abstract class - A simple representation of geometry objects
  * @author ityy35-bit
  */
 public abstract class Geometry {
