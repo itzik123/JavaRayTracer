@@ -62,7 +62,7 @@ public class Point {
     public double distanceSquared(Point other) {
         Double3 vec = _xyz.subtract(other._xyz);
         Double3 squared = vec.product(vec);
-        return squared._d1() + squared._d2() + squared._d3();
+        return squared._d1() + squared._d2() + squared._d3(); // We use a temporary variable to reduce duplication multiplication calculations
     }
 
     /**
