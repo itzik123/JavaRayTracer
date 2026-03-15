@@ -9,10 +9,10 @@ import geometries.api.Geometry;
 public abstract class RadialGeometry extends Geometry {
 
     /** the radius of the object */
-    protected double _radius;
+    protected final double _radius;
 
     /** the radius of the object squared */
-    protected double _radiusSquared;
+    protected final double _radiusSquared;
 
     /**
      * constructor of a simple object with a radius
