@@ -12,7 +12,6 @@ public abstract class Geometry {
      * @param point normal on the point
      * @return null unless there is override
      */
-    public Vector getNormal(Point point){
-        return null;
-    }
+    public abstract Vector getNormal(Point point);
+
 }
