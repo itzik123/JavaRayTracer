@@ -25,6 +25,7 @@ import primitives.Vector;
  * </ul>
  * Tests follow the methodology of
  * Equivalence Partitions (EP) and Boundary Values (BVA).
+ * @author itzik123
  */
 class VectorTest {
 
