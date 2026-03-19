@@ -21,6 +21,7 @@ import primitives.Vector;
  * </ul>
  * Tests follow the methodology of
  * Equivalence Partitions (EP) and Boundary Values (BVA).
+ * @author ityy35-bit
  */
 class PointTest {
 
@@ -41,11 +42,16 @@ class PointTest {
      */
     private static final double DELTA         = 1e-6;
 
+    /**
+     * Test method for {@link Point#subtract(Point)}.
+     * Verifies that the returned vector from the subtraction define correctly
+     * including when it should not create it
+     */
     @Test
     void testSubtract() {
         // ============ Equivalence Partitions Tests ==============
 
-        // TC01: regular substruct
+        // TC01: regular substruction
         assertEquals(POINT1.subtract(POINT2),VECTOR2,
                 "ERROR : Create the wrong vector");
 
@@ -57,6 +63,10 @@ class PointTest {
 
     }
 
+    /**
+     * Test method for {@link Point#add(Vector)}.
+     * Verifies that the returned point from the addition define correctly
+     */
     @Test
     void testAdd() {
         // ============ Equivalence Partitions Tests ==============
@@ -73,6 +83,10 @@ class PointTest {
 
     }
 
+    /**
+     * Test method for {@link Point#distanceSquared(Point)}.
+     * Verifies that the returned squared distance from the two points define correctly
+     */
     @Test
     void testDistanceSquared() {
         // ============ Equivalence Partitions Tests ==============
@@ -92,7 +106,10 @@ class PointTest {
                 "ERROR : Squared distance should be commutative");
 
     }
-
+    /**
+     * Test method for {@link Point#distance(Point)}.
+     * Verifies that the returned distance from the two points define correctly
+     */
     @Test
     void testDistance() {
         // ============ Equivalence Partitions Tests ==============
