@@ -1,13 +1,9 @@
 package geometries.impl;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
-import geometries.impl.Tube;
 import primitives.Point;
 import primitives.Vector;
 import primitives.Ray;
@@ -28,7 +24,7 @@ class TubeTest {
     TubeTest() { /* to satisfy JavaDoc generator */ }
 
     /** Vertex (0,0,0) used in Tube tests */
-    private static final Point  POINT_ORIGIN      = new Point(0, 0, 0);
+    private static final Point  POINT_ORIGIN    = new Point(0, 0, 0);
     /** Vertex (0,1,0) used in Tube tests */
     private static final Point  POINT_BVA       = new Point(0, 1, 0);
     /** Vertex (0,1,-1) used in Tube tests */
@@ -36,9 +32,10 @@ class TubeTest {
     /** Vertex (0,1,1) used in Tube tests */
     private static final Point  POINT_EP2       = new Point(0, 1, 1);
     /** direction vector used in tests */
-    private static final Vector VECTOR = new Vector(0, 0, 1);
+    private static final Vector VECTOR          = new Vector(0, 0, 1);
     /** normal vector used in tests */
-    private static final Vector VECTOR_NORMAL = new Vector(0, 1, 0);
+    private static final Vector VECTOR_NORMAL   = new Vector(0, 1, 0);
+
     /**
      * test method for {@link Tube#getNormal(Point)}
      */

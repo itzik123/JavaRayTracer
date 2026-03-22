@@ -5,11 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
-import primitives.Point;
-import primitives.Vector;
-
-
-
 /**
  * Unit tests for class {@link Point}.
  * The tests verify:
@@ -29,9 +24,9 @@ class PointTest {
     PointTest() { /* to satisfy JavaDoc generator */ }
 
     /** first point for point tests */
-    private static final Point  POINT1        = new Point(-1, 1, 1);
+    private static final Point  POINT1          = new Point(-1, 1, 1);
     /** Point not in the polygon plane */
-    private static final Point  POINT2        = new Point(0, 2, 2);
+    private static final Point  POINT2          = new Point(0, 2, 2);
     /** Vector that take POINT1 to ZERO */
     private static final Vector  VECTOR1        = new Vector(1, -1, -1);
     /** Vector from POINT2 to POINT1 */
@@ -52,7 +47,7 @@ class PointTest {
         // ============ Equivalence Partitions Tests ==============
 
         // TC01: regular substruction
-        assertEquals(POINT1.subtract(POINT2),VECTOR2,
+        assertEquals(VECTOR2, POINT1.subtract(POINT2),
                 "ERROR : Create the wrong vector");
 
         // =============== Boundary Values Tests ==================
@@ -72,13 +67,13 @@ class PointTest {
         // ============ Equivalence Partitions Tests ==============
 
         // TC01: regular addition
-        assertEquals(POINT2.add(VECTOR2),POINT1,
+        assertEquals(POINT1, POINT2.add(VECTOR2),
                 "ERROR : Create the wrong point");
 
         // =============== Boundary Values Tests ==================
 
         // TC11: addition to ZERO
-        assertEquals(POINT1.add(VECTOR1), Point.ZERO,
+        assertEquals(Point.ZERO, POINT1.add(VECTOR1),
                 "ERROR : Create the wrong point");
 
     }
@@ -92,13 +87,13 @@ class PointTest {
         // ============ Equivalence Partitions Tests ==============
 
         // TC01: regular squared distance
-        assertEquals(POINT2.distanceSquared(POINT1),3, DELTA,
+        assertEquals(3, POINT2.distanceSquared(POINT1), DELTA,
                 "ERROR : Calculate the wrong squared distance");
 
         // =============== Boundary Values Tests ==================
 
         // TC11: squared distance from point to itself
-        assertEquals(POINT1.distanceSquared(POINT1), 0, DELTA,
+        assertEquals(0, POINT1.distanceSquared(POINT1), DELTA,
                 "ERROR : Squared distance should be zero");
 
         // TC12: squared distance from 2 ways
@@ -121,7 +116,7 @@ class PointTest {
         // =============== Boundary Values Tests ==================
 
         // TC11: distance from point to itself
-        assertEquals(POINT1.distance(POINT1), 0, DELTA,
+        assertEquals(0, POINT1.distance(POINT1), DELTA,
                 "ERROR : Distance should be zero");
 
         // TC12: distance from 2 ways

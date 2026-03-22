@@ -1,14 +1,10 @@
 package geometries.impl;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
 import primitives.Point;
-import geometries.impl.Triangle;
 import primitives.Vector;
 
 /**
@@ -19,7 +15,7 @@ import primitives.Vector;
  * </ul>
  * Tests follow the methodology of
  * Equivalence Partitions (EP)
- * @author ityy35-bit
+ * @author itzik123
  */
 class SphereTest {
 
@@ -29,9 +25,9 @@ class SphereTest {
     /** Vertex (0,0,0) used in Sphere tests */
     private static final Point  POINT_ORIGIN      = new Point(0, 0, 0);
     /** Vertex (1,0,0) used in Sphere tests */
-    private static final Point  POINT_EP       = new Point(1, 0, 0);
+    private static final Point  POINT_EP          = new Point(1, 0, 0);
     /** normal vector used in tests */
-    private static final Vector VECTOR = new Vector(1, 0, 0);
+    private static final Vector VECTOR            = new Vector(1, 0, 0);
 
     /**
      * test method for {@link Sphere#getNormal(Point)}

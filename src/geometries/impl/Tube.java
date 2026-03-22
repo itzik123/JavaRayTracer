@@ -6,6 +6,8 @@ import primitives.Vector;
 
 import java.util.Objects;
 
+import static primitives.Util.isZero;
+
 /**
  * Represents an infinite tube in 3D space, defined by a radius and a central axis ray.
  * @author ityy35-bit
@@ -29,7 +31,11 @@ public class Tube extends RadialGeometry {
 
     @Override
     public Vector getNormal(Point point) {
-        return null;
+        double distance = _axis.getDirection().dotProduct(point.subtract(_axis.getOrigin()));
+        if (isZero(distance)){
+            return point.subtract(_axis.getOrigin()).normalize();
+        }
+        return point.subtract(_axis.getOrigin().add(_axis.getDirection().scale(distance))).normalize();
     }
 
     @Override
