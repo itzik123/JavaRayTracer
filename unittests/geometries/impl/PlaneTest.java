@@ -75,7 +75,7 @@ class PlaneTest {
     }
 
     /**
-     * test method for {@link Plane#Plane(Point, Point, Point)}
+     * test method for {@link Plane#Plane(Point, Vector)}
      */
     @Test
     void testPointAndVectorConstructor() {

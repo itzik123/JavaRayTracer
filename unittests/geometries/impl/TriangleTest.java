@@ -23,6 +23,9 @@ import primitives.Vector;
  */
 class TriangleTest {
 
+    /** Default constructor to satisfy JavaDoc generator */
+    TriangleTest() { /* to satisfy JavaDoc generator */ }
+
     /** Vertex (1,1,1) used in triangle tests */
     private static final Point  POINT_EP       = new Point(1, 1, 1);
     /** Vertex (1,0,0) used in triangle tests */
@@ -44,7 +47,7 @@ class TriangleTest {
 
         // TC01: test a normal on the triangle
         assertEquals(VECTOR.normalize(), triangle.getNormal(POINT_EP) ,
-                "ERROR: Failed normalizing the vector");
+                "ERROR: Failed returning the right normal");
     }
 
 }
