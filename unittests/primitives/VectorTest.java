@@ -143,7 +143,7 @@ class VectorTest {
         // =============== Boundary Values Tests ==================
 
         // TC11: Cross product of two parallel vectors
-        assertThrows(IllegalArgumentException.class, () -> V1.dotProduct(V3),
+        assertThrows(IllegalArgumentException.class, () -> V1.crossProduct(V3),
                 "ERROR: cross product with parallel vectors does not throw an exception");
     }
 
