@@ -32,7 +32,7 @@ public class Ray {
      * Returns the origin point of the ray.
      * @return the origin point
      */
-    public Point getOrigin() {
+    public Point origin() {
         return _origin;
     }
 
@@ -40,7 +40,7 @@ public class Ray {
      * Returns the direction vector of the ray.
      * @return the direction vector
      */
-    public Vector getDirection() {
+    public Vector direction() {
         return _direction;
     }
 

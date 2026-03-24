@@ -37,7 +37,7 @@ class RayTest {
         // ============ Equivalence Partitions Tests ==============
         // TC01: regular addition
         final  Ray ray = new Ray(POINT,VECTOR);
-        assertEquals(1,ray.getDirection().lengthSquared(), DELTA,
+        assertEquals(1,ray.direction().lengthSquared(), DELTA,
                 "ERROR: direction vector not normalized");
 
     }
