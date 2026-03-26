@@ -5,6 +5,7 @@ import static primitives.Util.isZero;
 import java.util.List;
 
 import geometries.api.Geometry;
+import primitives.Ray;
 import primitives.Vector;
 import primitives.Point;
 
@@ -74,6 +75,11 @@ public class Polygon extends Geometry {
             throw new IllegalArgumentException("All vertices must be ordered and the polygon must be convex");
       }
    }
+
+    @Override
+    public List<Point> findIntersections(Ray ray){
+        return null;
+    }
 
    @Override
    public Vector getNormal(Point point) { return _plane.getNormal(point); }

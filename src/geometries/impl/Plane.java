@@ -2,8 +2,10 @@ package geometries.impl;
 
 import geometries.api.Geometry;
 import primitives.Point;
+import primitives.Ray;
 import primitives.Vector;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -51,6 +53,10 @@ public class Plane extends Geometry {
         return _normal;
     }
 
+    @Override
+    public List<Point> findIntersections(Ray ray){
+        return null;
+    }
 
     @Override
     public String toString() {
