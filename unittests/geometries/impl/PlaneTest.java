@@ -142,36 +142,36 @@ class PlaneTest {
     void testFindIntersections() {
         // ============ Equivalence Partitions Tests ==============
 
-        // EP01: Ray intersects the plane at one point
+        // TC01: Ray intersects the plane at one point
         assertEquals(INTERSECTION_EP01, PLANE.findIntersections(EP01), ERROR_PLANE_INTERSECTION);
 
-        // EP02: Ray does not intersect the plane
+        // TC02: Ray does not intersect the plane
         assertNull(PLANE.findIntersections(EP02), ERROR_PLANE_INTERSECTION);
 
         // =============== Boundary Values Tests ==================
 
         // **** Group 1: Ray is parallel to the plane
-        // BV11: The ray is included in the plane (0 points)
+        // TC11: The ray is included in the plane (0 points)
         assertNull(PLANE.findIntersections(BV11), ERROR_PLANE_INTERSECTION);
 
-        // BV12: The ray is not included in the plane (0 points)
+        // TC12: The ray is not included in the plane (0 points)
         assertNull(PLANE.findIntersections(BV12), ERROR_PLANE_INTERSECTION);
 
         // **** Group 2: Ray is orthogonal to the plane
-        // BV21: Ray starts before the plane (1 point)
+        // TC21: Ray starts before the plane (1 point)
         assertEquals(INTERSECTION_BV21, PLANE.findIntersections(BV21), ERROR_PLANE_INTERSECTION);
 
-        // BV22: Ray starts in the plane (0 points, because intersection must be strictly t > 0)
+        // TC22: Ray starts in the plane (0 points, because intersection must be strictly t > 0)
         assertNull(PLANE.findIntersections(BV22), ERROR_PLANE_INTERSECTION);
 
-        // BV23: Ray starts after the plane (0 points)
+        // TC23: Ray starts after the plane (0 points)
         assertNull(PLANE.findIntersections(BV23), ERROR_PLANE_INTERSECTION);
 
         // **** Group 3: Ray is neither orthogonal nor parallel and begins on the plane
-        // BV31: Ray begins on the plane (0 points, t = 0)
+        // TC31: Ray begins on the plane (0 points, t = 0)
         assertNull(PLANE.findIntersections(BV31), ERROR_PLANE_INTERSECTION);
 
-        // BV32: Ray begins at the reference point of the plane (0 points, t = 0)
+        // TC32: Ray begins at the reference point of the plane (0 points, t = 0)
         assertNull(PLANE.findIntersections(BV32), ERROR_PLANE_INTERSECTION);
     }
 }

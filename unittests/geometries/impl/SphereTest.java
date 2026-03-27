@@ -118,61 +118,61 @@ class SphereTest {
     void testFindIntersections() {
         // ============ Equivalence Partitions Tests ==============
 
-        // EP01: Ray's line is outside the sphere (0 points)
+        // TC01: Ray's line is outside the sphere (0 points)
         assertNull(SPHERE.findIntersections(EP01), ERROR_SPHERE_INTERSECTION);
 
-        // EP02: Ray starts before and crosses the sphere (2 points)
+        // TC02: Ray starts before and crosses the sphere (2 points)
         assertEquals(INTERSECTION_EP02, SPHERE.findIntersections(EP02), ERROR_SPHERE_INTERSECTION);
 
-        // EP03: Ray starts inside the sphere (1 point)
+        // TC03: Ray starts inside the sphere (1 point)
         assertEquals(INTERSECTION_EP03, SPHERE.findIntersections(EP03), ERROR_SPHERE_INTERSECTION);
 
-        // EP04: Ray starts after the sphere (0 points)
+        // TC04: Ray starts after the sphere (0 points)
         assertNull(SPHERE.findIntersections(EP04), ERROR_SPHERE_INTERSECTION);
 
         // =============== Boundary Values Tests ==================
 
         // **** Group 1: Ray's line crosses the sphere (but not the center)
-        // BV11: Ray starts at sphere and goes inside (1 point)
+        // TC11: Ray starts at sphere and goes inside (1 point)
         assertEquals(INTERSECTION_BV11, SPHERE.findIntersections(BV11), ERROR_SPHERE_INTERSECTION);
 
-        // BV12: Ray starts at sphere and goes outside (0 points)
+        // TC12: Ray starts at sphere and goes outside (0 points)
         assertNull(SPHERE.findIntersections(BV12), ERROR_SPHERE_INTERSECTION);
 
         // **** Group 2: Ray's line goes through the center
-        // BV21: Ray starts before the sphere (2 points)
+        // TC21: Ray starts before the sphere (2 points)
         assertEquals(INTERSECTION_BV21, SPHERE.findIntersections(BV21), ERROR_SPHERE_INTERSECTION);
 
-        // BV22: Ray starts at sphere and goes inside (1 point)
+        // TC22: Ray starts at sphere and goes inside (1 point)
         assertEquals(INTERSECTION_BV22, SPHERE.findIntersections(BV22), ERROR_SPHERE_INTERSECTION);
 
-        // BV23: Ray starts inside (1 point)
+        // TC23: Ray starts inside (1 point)
         assertEquals(INTERSECTION_BV23, SPHERE.findIntersections(BV23), ERROR_SPHERE_INTERSECTION);
 
-        // BV24: Ray starts at the center (1 point)
+        // TC24: Ray starts at the center (1 point)
         assertEquals(INTERSECTION_BV24, SPHERE.findIntersections(BV24), ERROR_SPHERE_INTERSECTION);
 
-        // BV25: Ray starts at sphere and goes outside (0 points)
+        // TC25: Ray starts at sphere and goes outside (0 points)
         assertNull(SPHERE.findIntersections(BV25), ERROR_SPHERE_INTERSECTION);
 
-        // BV26: Ray starts after sphere (0 points)
+        // TC26: Ray starts after sphere (0 points)
         assertNull(SPHERE.findIntersections(BV26), ERROR_SPHERE_INTERSECTION);
 
         // **** Group 3: Ray's line is tangent to the sphere (all tests 0 points)
-        // BV31: Ray starts before the tangent point
+        // TC31: Ray starts before the tangent point
         assertNull(SPHERE.findIntersections(BV31), ERROR_SPHERE_INTERSECTION);
 
-        // BV32: Ray starts at the tangent point
+        // TC32: Ray starts at the tangent point
         assertNull(SPHERE.findIntersections(BV32), ERROR_SPHERE_INTERSECTION);
 
-        // BV33: Ray starts after the tangent point
+        // TC33: Ray starts after the tangent point
         assertNull(SPHERE.findIntersections(BV33), ERROR_SPHERE_INTERSECTION);
 
         // **** Group 4: Special cases
-        // BV41: Ray's line is outside sphere, ray is orthogonal to ray start to sphere's center line
+        // TC41: Ray's line is outside sphere, ray is orthogonal to ray start to sphere's center line
         assertNull(SPHERE.findIntersections(BV41), ERROR_SPHERE_INTERSECTION);
 
-        // BV42: Ray starts inside, ray is orthogonal to ray start to sphere's center line
+        // TC42: Ray starts inside, ray is orthogonal to ray start to sphere's center line
         assertEquals(INTERSECTION_BV42, SPHERE.findIntersections(BV42), ERROR_SPHERE_INTERSECTION);
     }
 }
