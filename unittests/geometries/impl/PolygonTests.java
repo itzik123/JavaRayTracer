@@ -9,8 +9,6 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import geometries.impl.Plane;
-import geometries.impl.Polygon;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
@@ -117,4 +115,131 @@ class PolygonTests {
          assertEquals(0d, result.dotProduct(edge), DELTA, "Polygon normal is not orthogonal to an edge");
       }
    }
+
+    /** Error message for polygon intersection failures */
+    private static final String ERROR_POLYGON_INTERSECTION = "Wrong polygon intersection result";
+
+    private static final Point V1 = new Point(1, 1, 0);
+    private static final Point V2 = new Point(1, -1, 0);
+    private static final Point V3 = new Point(-1, -1, 0);
+    private static final Point V4 = new Point(-1, 1, 0);
+
+    /** The polygon (square) used for tests */
+    private static final Polygon POLYGON = new Polygon(V1, V2, V3, V4);
+
+    /** EP01: Ray intersecting strictly inside the polygon (at 0,0,0) */
+    private static final Ray EP01 = new Ray(new Point(0, 0, 1), new Vector(0, 0, -1));
+
+    /** EP02: Ray intersecting outside against an edge (against V1-V2) */
+    private static final Ray EP02 = new Ray(new Point(2, 0, 1), new Vector(0, 0, -1));
+
+    /** EP03: Ray intersecting outside against a vertex (against V1) */
+    private static final Ray EP03 = new Ray(new Point(2, 2, 1), new Vector(0, 0, -1));
+
+    /** Ray whose line does not intersect the plane of the polygon at all */
+    private static final Ray EP04 = new Ray(new Point(0, 0, 1), new Vector(1, 1, 1));
+
+    /** BV11: Ray intersecting strictly on an edge (on V1-V2 at 1,0,0) */
+    private static final Ray BV11 = new Ray(new Point(1, 0, 1), new Vector(0, 0, -1));
+
+    /** BV12: Ray intersecting strictly on a vertex (on V1 at 1,1,0) */
+    private static final Ray BV12 = new Ray(new Point(1, 1, 1), new Vector(0, 0, -1));
+
+    /** BV13: Ray intersecting on an edge's continuation (continuation of V2-V1) */
+    private static final Ray BV13 = new Ray(new Point(1, 2, 1), new Vector(0, 0, -1));
+
+
+    /** Ray parallel to the plane and included in it */
+    private static final Ray BV21 = new Ray(new Point(0, 0, 0), new Vector(1, 0, 0));
+
+    /** Ray parallel to the plane but not included in it */
+    private static final Ray BV22 = new Ray(new Point(0, 0, 1), new Vector(1, 0, 0));
+
+    /** Ray orthogonal to the plane, starting IN the plane */
+    private static final Ray BV31 = new Ray(new Point(0, 0, 0), new Vector(0, 0, -1));
+
+    /** Ray orthogonal to the plane, starting AFTER the plane */
+    private static final Ray BV32 = new Ray(new Point(0, 0, -1), new Vector(0, 0, -1));
+
+    /** Ray orthogonal to the plane, starting BEFORE the plane */
+    private static final Ray BV33 = new Ray(new Point(0, 0, 1), new Vector(0, 0, -1));
+
+    /** Ray beginning on the plane and pointing away from it */
+    private static final Ray BV41 = new Ray(new Point(0, 0, 0), new Vector(1, 1, 1));
+
+    // ================= Expected Intersections Lists =================
+
+    /** Expected intersection point for EP01 test */
+    private static final List<Point> INTERSECTION_EP01 = List.of(new Point(0, 0, 0));
+
+    /** Expected intersection point for BV33 test */
+    private static final List<Point> INTERSECTION_BV33 = List.of(new Point(0, 0, 0));
+
+    /**
+     * Test method for {@link Polygon#findIntersections(Ray)}.
+     */
+    @Test
+    void testFindIntersections() {
+
+        // =========================================================================
+        //                 PART 1: SPECIFIC POLYGON TESTS
+        // All rays here go straight down (0,0,-1) from z=1 to intersect the plane z=0
+        // =========================================================================
+
+        // ============ Equivalence Partitions Tests ==============
+
+        // TC01: Ray intersects strictly inside the polygon
+        assertEquals(INTERSECTION_EP01, POLYGON.findIntersections(EP01), ERROR_POLYGON_INTERSECTION);
+
+        // TC02: Ray intersects outside against an edge (against V2-V3)
+        assertNull(POLYGON.findIntersections(EP02), ERROR_POLYGON_INTERSECTION);
+
+        // TC03: Ray intersects outside against a vertex (against V1)
+        assertNull(POLYGON.findIntersections(EP03), ERROR_POLYGON_INTERSECTION);
+
+        // =============== Boundary Values Tests ==================
+
+        // TC11: Ray intersects strictly on an edge (on V2-V3)
+        assertNull(POLYGON.findIntersections(BV11), ERROR_POLYGON_INTERSECTION);
+
+        // TC12: Ray intersects strictly on a vertex (on V1)
+        assertNull(POLYGON.findIntersections(BV12), ERROR_POLYGON_INTERSECTION);
+
+        // TC13: Ray intersects on an edge's continuation (continuation of V2-V3)
+        assertNull(POLYGON.findIntersections(BV13), ERROR_POLYGON_INTERSECTION);
+
+
+        // =========================================================================
+        //                 PART 2: PLANE BASED TESTS (No Intersections)
+        // Cases where the ray doesn't even intersect the plane the polygon is on
+        // =========================================================================
+
+        // ============ Equivalence Partitions Tests ==============
+
+        // TC04: Ray's line does not intersect the plane at all
+        assertNull(POLYGON.findIntersections(EP04), ERROR_POLYGON_INTERSECTION);
+
+        // =============== Boundary Values Tests ==================
+
+        // **** Group 1: Ray is parallel to the plane
+        // TC21: The ray is included in the plane
+        assertNull(POLYGON.findIntersections(BV21), ERROR_POLYGON_INTERSECTION);
+
+        // TC22: The ray is parallel but not included in the plane
+        assertNull(POLYGON.findIntersections(BV22), ERROR_POLYGON_INTERSECTION);
+
+        // **** Group 2: Ray is orthogonal to the plane
+        // TC31: Ray starts IN the plane (orthogonal)
+        assertNull(POLYGON.findIntersections(BV31), ERROR_POLYGON_INTERSECTION);
+
+        // TC32: Ray starts AFTER the plane (orthogonal)
+        assertNull(POLYGON.findIntersections(BV32), ERROR_POLYGON_INTERSECTION);
+
+        // TC33: Ray starts BEFORE the plane (orthogonal)
+        assertEquals(INTERSECTION_BV33, POLYGON.findIntersections(BV33), ERROR_POLYGON_INTERSECTION);
+
+        // **** Group 3: Ray begins on the plane (neither orthogonal nor parallel)
+        // TC41: Ray begins on the plane and points away
+        assertNull(POLYGON.findIntersections(BV41), ERROR_POLYGON_INTERSECTION);
+    }
 }
