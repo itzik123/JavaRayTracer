@@ -19,6 +19,7 @@ import primitives.Vector;
  * <ul>
  * <li>Polygon constructor validity</li>
  * <li>{@link Polygon#getNormal(Point)}</li>
+ * <li>{@link Polygon#findIntersections(Ray)}</li>
  * </ul>
  * Tests follow the methodology of
  * Equivalence Partitions (EP) and Boundary Values (BVA).
