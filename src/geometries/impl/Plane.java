@@ -8,6 +8,9 @@ import primitives.Vector;
 import java.util.List;
 import java.util.Objects;
 
+import static primitives.Util.alignZero;
+import static primitives.Util.isZero;
+
 /**
  * Plane class represents the plane witch we will use in polygons
  * @author ityy35-bit
@@ -55,6 +58,13 @@ public class Plane extends Geometry {
 
     @Override
     public List<Point> findIntersections(Ray ray){
+        if (_point.equals(ray.origin()) || isZero(_normal.dotProduct(ray.direction()))) {
+            return null;
+        }
+        double t = alignZero(_normal.dotProduct(_point.subtract(ray.origin())) / _normal.dotProduct(ray.direction()));
+        if (alignZero(t) > 0){
+            return List.of(ray.getPoint(t));
+        }
         return null;
     }
 
