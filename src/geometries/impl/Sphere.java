@@ -4,8 +4,13 @@ import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import static java.lang.Math.sqrt;
+import static primitives.Util.alignZero;
+import static primitives.Util.isZero;
 
 /**
  * Represents a sphere in 3D space.
@@ -32,6 +37,21 @@ public class Sphere extends RadialGeometry {
 
     @Override
     public List<Point> findIntersections(Ray ray){
+        if (ray.origin().equals(_center)) {
+            return List.of(ray.getPoint(_radius));
+        }
+        Vector vector = _center.subtract(ray.origin());
+        double tm = vector.dotProduct(ray.direction());
+        double dSquared = alignZero(vector.lengthSquared() - tm * tm);
+        if (alignZero(dSquared - _radiusSquared) >= 0) {
+            return null;
+        }
+        double th = alignZero(sqrt(_radiusSquared - dSquared));
+        if (alignZero(tm - th) > 0){
+            return List.of(ray.getPoint(tm - th), ray.getPoint(tm + th));
+        } else if (alignZero(tm + th) > 0){
+            return List.of(ray.getPoint(tm + th));
+        }
         return null;
     }
 
