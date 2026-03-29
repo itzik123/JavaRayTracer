@@ -44,6 +44,17 @@ public class Ray {
         return _direction;
     }
 
+    /**
+     * @param t te scale we add to the origin
+     * @return the point in distance of t from the origin in the direction of the ray
+     */
+    public Point getPoint(double t){
+        if (t > 0) {
+            return _origin.add(_direction.scale(t));
+        }
+        return null;
+    }
+
     @Override
     public String toString() {
         return "Ray: " + _origin + _direction;
