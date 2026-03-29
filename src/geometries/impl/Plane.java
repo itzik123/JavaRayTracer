@@ -62,10 +62,7 @@ public class Plane extends Geometry {
             return null;
         }
         double t = alignZero(_normal.dotProduct(_point.subtract(ray.origin())) / _normal.dotProduct(ray.direction()));
-        if (alignZero(t) > 0){
-            return List.of(ray.getPoint(t));
-        }
-        return null;
+        return (alignZero(t) > 0) ? List.of(ray.getPoint(t)) : null;
     }
 
     @Override

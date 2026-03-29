@@ -47,13 +47,9 @@ public class Triangle extends Polygon {
                 return null;
             }
             double t = alignZero(edge2.dotProduct(qvec) / det);
-            if (t > 0) {
-                return List.of(ray.getPoint(t));
-            }
+            return (alignZero(t) > 0) ? List.of(ray.getPoint(t)) : null;
         } catch (IllegalArgumentException e) {
             return null;
         }
-
-        return null;
     }
 }
