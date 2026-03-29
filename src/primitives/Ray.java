@@ -48,11 +48,12 @@ public class Ray {
      * @param t te scale we add to the origin
      * @return the point in distance of t from the origin in the direction of the ray
      */
-    public Point getPoint(double t){
-        if (t > 0) {
+    public Point getPoint(double t) {
+        try {
             return _origin.add(_direction.scale(t));
+        } catch (IllegalArgumentException _) {
+            return _origin;
         }
-        return null;
     }
 
     @Override
