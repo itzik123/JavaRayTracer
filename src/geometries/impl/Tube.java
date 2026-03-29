@@ -38,7 +38,7 @@ public class Tube extends RadialGeometry {
         if (isZero(distance)){
             return point.subtract(_axis.origin()).normalize();
         }
-        return point.subtract(_axis.origin().add(_axis.direction().scale(distance))).normalize();
+        return point.subtract(_axis.getPoint(distance)).normalize();
     }
 
     @Override
