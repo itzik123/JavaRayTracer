@@ -42,7 +42,7 @@ public class Triangle extends Polygon {
                 return null;
             }
             Vector qvec = tvec.crossProduct(edge1);
-            double v = alignZero(ray.direction().dotProduct(qvec) / det); // <-- כאן תוקן הבאג
+            double v = alignZero(ray.direction().dotProduct(qvec) / det);
             if (v <= 0 || u + v >= 1) {
                 return null;
             }
