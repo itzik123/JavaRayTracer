@@ -4,6 +4,7 @@ out/
 !**/src/test/**/out/
 .kotlin
 /doc/
+/images/
 
 ### Eclipse ###
 .apt_generated
