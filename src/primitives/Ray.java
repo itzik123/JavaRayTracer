@@ -57,12 +57,21 @@ public class Ray {
         }
     }
 
+    /**
+     * Finds the closest point to the ray's origin from a given list of points.
+     * @param points a list of points (usually intersection points)
+     * @return the closest point to the ray's origin, or null if the list is null
+     */
     public Point findClosestPoint(List<Point> points) {
+        if (points == null) {
+            return null;
+        }
+
         double min_dis = Double.POSITIVE_INFINITY;
         for(Point point: points){
             min_dis = Math.min(_origin.distanceSquared(point), min_dis);
         }
-        return (min_dis < Double.POSITIVE_INFINITY)? getPoint(min_dis) : null;
+        return getPoint(Math.sqrt(min_dis));
     }
 
     @Override
