@@ -1,5 +1,6 @@
 package primitives;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -54,6 +55,10 @@ public class Ray {
         } catch (IllegalArgumentException _) {
             return _origin;
         }
+    }
+
+    public Point findClosestPoint(List<Point> points) {
+        return null;
     }
 
     @Override

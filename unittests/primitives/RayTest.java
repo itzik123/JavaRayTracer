@@ -3,6 +3,9 @@ package primitives;
 import org.junit.jupiter.api.Test;
 
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 
@@ -42,6 +45,7 @@ class RayTest {
     @Test
     void testConstructor() {
         // ============ Equivalence Partitions Tests ==============
+
         // TC01: regular addition
         final  Ray ray = new Ray(POINT,VECTOR);
         assertEquals(1,ray.direction().lengthSquared(), DELTA,
@@ -78,5 +82,39 @@ class RayTest {
 
     }
 
+    /**point (2,0,0) used for test*/
+    private static final Point POINT1 = new Point(2,0,0);
+    /**point (1,0,0) used for test*/
+    private static final Point POINT2 = new Point(1,0,0);
+    /**point (3,0,0) used for test*/
+    private static final Point POINT3 = new Point(3,0,0);
+    /**list used for tests*/
+    private static final List<Point> EP1 = List.of(POINT1, POINT2, POINT3);
+    /**list used for tests*/
+    private static final List<Point> BV1 = null;
+    /**list used for tests*/
+    private static final List<Point> BV2 = List.of(POINT2, POINT1, POINT3);
+    /**list used for tests*/
+    private static final List<Point> BV3 = List.of(POINT3, POINT1, POINT2);
 
+    @Test
+    void testFindClosestPoint() {
+        // ============ Equivalence Partitions Tests ==============
+
+        // TC01: the closest point is in the middle
+        assertEquals(POINT2, RAY.findClosestPoint(EP1), "ERROR: didn't return the right point in ep1");
+
+        // =============== Boundary Values Tests ==================
+
+        // TC11: empty list
+        assertNull(RAY.findClosestPoint(BV1), "ERROR: return a point in an empty list");
+
+        // TC12: the closest point is in the beginning
+        assertEquals(POINT2, RAY.findClosestPoint(BV2), "ERROR: didn't return the right point in bv2");
+
+        // TC13: the closest point is in the end
+        assertEquals(POINT2, RAY.findClosestPoint(BV3), "ERROR: didn't return the right point in bv3");
+
+
+    }
 }
