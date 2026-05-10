@@ -14,7 +14,7 @@ class SimpleRayTracer extends RayTracerBase{
         return _scene.ambientLight.getIntensity();
     }
     @Override
-    Color traceTay(Ray ray) {
+    Color traceRay(Ray ray) {
         var intersecting_point = ray.findClosestPoint(_scene.geometries.findIntersections(ray));
         return (intersecting_point != null)? calcColor(intersecting_point) : _scene.background;
     }

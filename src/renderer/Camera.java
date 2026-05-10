@@ -1,8 +1,10 @@
 package renderer;
 
+import primitives.Color;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
+import scene.Scene;
 
 import static primitives.Util.isZero;
 
@@ -48,6 +50,12 @@ public class Camera implements Cloneable {
     /** The physical height of a single pixel on the view plane. */
     private double _pixelHeight;
 
+    /** The image writer */
+    private ImageWriter _imageWriter;
+
+    /** The ray tracer */
+    private RayTracerBase _rayTracer;
+
     /**
      * Private default constructor to prevent direct instantiation.
      * Use {@link #getBuilder()} to construct a Camera.
@@ -61,6 +69,30 @@ public class Camera implements Cloneable {
     public static Builder getBuilder() {
         return new Builder();
     }
+
+    public Camera renderImage() {
+        for (int i = 0; i < _nY; ++i){
+            for(int j = 0; j < _nX; ++j){
+                castRay(j, i);
+            }
+        }
+        return this;
+    }
+
+    private void castRay(int xIndex, int yIndex) {
+        Ray ray = constructRay(xIndex, yIndex);
+        _imageWriter.writePixel(xIndex, yIndex, _rayTracer.traceRay(ray));
+    }
+
+    public Camera printGrid(int interval, Color color) {
+        for (int i = 0; i < _nY; i += interval){
+            for(int j = 0; j < _nX; j += interval){
+                _imageWriter.writePixel(j, i, color);
+            }
+        }
+        return this;
+    }
+
 
     /**
      * Constructs a ray passing through the center of a specific pixel on the view plane.
@@ -183,6 +215,15 @@ public class Camera implements Cloneable {
             return this;
         }
 
+        public Builder setRayTracer(Scene scene, RayTracerType type) {
+            if (type == RayTracerType.SIMPLE) {
+                _camera._rayTracer = new SimpleRayTracer(scene);
+            } else {
+                throw new IllegalArgumentException("Unsupported ray tracer type: " + type);
+            }
+            return this;
+        }
+
         /**
          * Finalizes the camera construction, performs checks, calculates derived fields,
          * and returns a cloned instance of the fully configured camera.
@@ -192,6 +233,10 @@ public class Camera implements Cloneable {
             checkResolution();
             checkLocationAndDirection();
             checkViewPlane();
+
+            if (_camera._rayTracer == null) {
+                this.setRayTracer(new Scene("test"), RayTracerType.SIMPLE);
+            }
 
             try {
                 return (Camera) _camera.clone();
@@ -207,6 +252,7 @@ public class Camera implements Cloneable {
         private void checkResolution() {
             if (_camera._nX <= 0 || _camera._nY <= 0)
                 throw new IllegalArgumentException("Resolution must be positive");
+            _camera._imageWriter = new ImageWriter(_camera._nX, _camera._nY);
         }
 
         /**
