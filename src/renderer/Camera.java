@@ -84,13 +84,15 @@ public class Camera implements Cloneable {
         _imageWriter.writePixel(xIndex, yIndex, _rayTracer.traceRay(ray));
     }
 
-    public Camera printGrid(int interval, Color color) {
-        for (int i = 0; i < _nY; i += interval){
-            for(int j = 0; j < _nX; j += interval){
-                _imageWriter.writePixel(j, i, color);
+    public ImageWriter printGrid(int interval, Color color) {
+        for (int i = 0; i < _nY; ++i) {
+            for (int j = 0; j < _nX; ++j) {
+                if (j % interval == 0 || i % interval == 0) {
+                    _imageWriter.writePixel(j, i, color);
+                }
             }
         }
-        return this;
+        return _imageWriter;
     }
 
 
