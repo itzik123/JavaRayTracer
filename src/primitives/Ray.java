@@ -58,7 +58,11 @@ public class Ray {
     }
 
     public Point findClosestPoint(List<Point> points) {
-        return null;
+        double min_dis = Double.POSITIVE_INFINITY;
+        for(Point point: points){
+            min_dis = Math.min(_origin.distanceSquared(point), min_dis);
+        }
+        return (min_dis < Double.POSITIVE_INFINITY)? getPoint(min_dis) : null;
     }
 
     @Override
