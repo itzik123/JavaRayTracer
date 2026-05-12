@@ -84,7 +84,7 @@ public class Camera implements Cloneable {
         _imageWriter.writePixel(xIndex, yIndex, _rayTracer.traceRay(ray));
     }
 
-    public ImageWriter printGrid(int interval, Color color) {
+    public Camera printGrid(int interval, Color color) {
         for (int i = 0; i < _nY; ++i) {
             for (int j = 0; j < _nX; ++j) {
                 if (j % interval == 0 || i % interval == 0) {
@@ -92,7 +92,15 @@ public class Camera implements Cloneable {
                 }
             }
         }
-        return _imageWriter;
+        return this;
+    }
+
+    /**
+     * Delegates the image writing process to the internal ImageWriter.
+     * @param imageName the name of the output image file
+     */
+    public void writeToImage(String imageName) {
+        _imageWriter.writeToImage(imageName);
     }
 
 
