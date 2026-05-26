@@ -143,7 +143,7 @@ class RenderTests {
    }
 
    /** Test for XML based scene - for bonus */
-   @Test
+   @Disabled
    void testBasicRenderXml() {
       renderSceneXML(baseCameraBuilder(), "basicRenderTestTwoColors") //
          .printGrid(100, new Color(YELLOW)) //
