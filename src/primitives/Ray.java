@@ -1,5 +1,7 @@
 package primitives;
 
+import geometries.api.Intersectable.Intersection;
+
 import java.util.List;
 import java.util.Objects;
 
@@ -58,20 +60,39 @@ public class Ray {
     }
 
     /**
-     * Finds the closest point to the ray's origin from a given list of points.
-     * @param points a list of points (usually intersection points)
-     * @return the closest point to the ray's origin, or null if the list is null
+     * Finds the closest point to the ray origin among a list of points.
+     * Maintained for backward compatibility.
+     * @param points a list of points
+     * @return the closest point, or null if the list is empty/null
      */
     public Point findClosestPoint(List<Point> points) {
-        if (points == null) {
+        return points == null || points.isEmpty() ? null
+                : findClosestIntersection(points.stream()
+                .map(p -> new geometries.api.Intersectable.Intersection(null, p))
+                .toList()).point;
+    }
+
+    /**
+     * Finds the closest intersection to the ray origin among a list of intersections.
+     * @param intersections a list of intersections
+     * @return the closest intersection, or null if the list is empty/null
+     */
+    public Intersection findClosestIntersection(List<Intersection> intersections) {
+        if (intersections == null || intersections.isEmpty()) {
             return null;
         }
 
-        double min_dis = Double.POSITIVE_INFINITY;
-        for(Point point: points){
-            min_dis = Math.min(_origin.distanceSquared(point), min_dis);
+        geometries.api.Intersectable.Intersection closest = null;
+        double minDistance = Double.MAX_VALUE;
+
+        for (geometries.api.Intersectable.Intersection intersection : intersections) {
+            double distance = intersection.point.distanceSquared(this.origin()); // הנחתי שפונקציית הגישה לראש הקרן היא origin()
+            if (distance < minDistance) {
+                minDistance = distance;
+                closest = intersection;
+            }
         }
-        return getPoint(Math.sqrt(min_dis));
+        return closest;
     }
 
     @Override

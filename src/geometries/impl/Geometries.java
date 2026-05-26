@@ -43,7 +43,7 @@ public class Geometries extends Intersectable {
     }
 
     @Override
-    protected List<Intersection> calcIntersectionshelper(Ray ray) {
+    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
         List<Intersection> result = null;
 
         for (Intersectable geometry : geometries) {
