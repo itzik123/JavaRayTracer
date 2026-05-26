@@ -7,10 +7,7 @@ import primitives.Color;
  * This class is immutable.
  * @author itzik123
  */
-public class AmbientLight {
-
-    /** The intensity color of the ambient light. */
-    private final Color _intensity;
+public class AmbientLight extends Light {
 
     /** Constant representing no ambient light (pitch black). */
     public static final AmbientLight NONE = new AmbientLight(Color.BLACK);
@@ -21,15 +18,6 @@ public class AmbientLight {
      * @param intensity the color intensity of the ambient light
      */
     public AmbientLight(Color intensity) {
-        _intensity = intensity;
-    }
-
-    /**
-     * Gets the intensity color of the ambient light.
-     *
-     * @return the intensity color
-     */
-    public Color getIntensity() {
-        return _intensity;
+        super(intensity);
     }
 }
