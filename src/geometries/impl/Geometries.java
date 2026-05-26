@@ -6,6 +6,7 @@ import primitives.Ray;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -42,15 +43,15 @@ public class Geometries extends Intersectable {
     }
 
     @Override
-    public List<Point> findIntersections(Ray ray) {
-        List<Point> result = null;
+    protected List<Intersection> calcIntersectionshelper(Ray ray) {
+        List<Intersection> result = null;
 
         for (Intersectable geometry : geometries) {
-            List<Point> geoIntersections = geometry.findIntersections(ray);
+            List<Intersection> geoIntersections = geometry.calcIntersections(ray);
 
             if (geoIntersections != null) {
                 if (result == null) {
-                    result = new ArrayList<>();
+                    result = new LinkedList<>();
                 }
                 result.addAll(geoIntersections);
             }
