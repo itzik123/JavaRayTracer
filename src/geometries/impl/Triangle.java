@@ -6,6 +6,8 @@ import primitives.Vector;
 
 import java.util.List;
 
+import static geometries.api.Intersectable.Intersection;
+
 import static primitives.Util.alignZero;
 import static primitives.Util.isZero;
 
@@ -26,7 +28,7 @@ public class Triangle extends Polygon {
     }
 
     @Override
-    public List<Point> findIntersections(Ray ray) {
+    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
         Vector edge1 = _vertices.get(1).subtract(_vertices.get(0));
         Vector edge2 = _vertices.get(2).subtract(_vertices.get(0));
 
@@ -47,7 +49,7 @@ public class Triangle extends Polygon {
                 return null;
             }
             double t = alignZero(edge2.dotProduct(qvec) / det);
-            return (alignZero(t) > 0) ? List.of(ray.getPoint(t)) : null;
+            return (alignZero(t) > 0) ? List.of(new Intersection(this, ray.getPoint(t))) : null;
         } catch (IllegalArgumentException e) {
             return null;
         }

@@ -6,6 +6,8 @@ import static primitives.Util.isZero;
 import java.util.LinkedList;
 import java.util.List;
 
+import static geometries.api.Intersectable.Intersection;
+
 import geometries.api.Geometry;
 import primitives.Ray;
 import primitives.Vector;
@@ -79,7 +81,7 @@ public class Polygon extends Geometry {
    }
 
     @Override
-    public List<Point> findIntersections(Ray ray){
+    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
        try {
            boolean isPositive = false;
            int size = _vertices.size();
@@ -98,7 +100,12 @@ public class Polygon extends Geometry {
                }
                v1 = v2;
            }
-           return _plane.findIntersections(ray);
+           List<Point> planeIntersections = _plane.findIntersections(ray);
+           if (planeIntersections == null) {
+               return null;
+           }
+
+           return List.of(new Intersection(this, planeIntersections.getFirst()));
        } catch (IllegalArgumentException _) {
            return null;
        }

@@ -8,6 +8,8 @@ import primitives.Vector;
 import java.util.List;
 import java.util.Objects;
 
+import static geometries.api.Intersectable.Intersection;
+
 import static primitives.Util.alignZero;
 import static primitives.Util.isZero;
 
@@ -57,12 +59,13 @@ public class Plane extends Geometry {
     }
 
     @Override
-    public List<Point> findIntersections(Ray ray){
+    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
         if (_point.equals(ray.origin()) || isZero(_normal.dotProduct(ray.direction()))) {
             return null;
         }
         double t = alignZero(_normal.dotProduct(_point.subtract(ray.origin())) / _normal.dotProduct(ray.direction()));
-        return (alignZero(t) > 0) ? List.of(ray.getPoint(t)) : null;
+        Point p = ray.getPoint(t);
+        return List.of(new Intersection(this, p));
     }
 
     @Override
