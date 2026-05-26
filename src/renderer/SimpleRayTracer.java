@@ -12,7 +12,7 @@ class SimpleRayTracer extends RayTracerBase{
         super(scene);
     }
     private Color calcColor(Intersectable.Intersection intersection){
-        return _scene.ambientLight.getIntensity().add(intersection.geometry.getEmission());
+        return (_scene.ambientLight.getIntensity().scale(intersection.material.kA)).add(intersection.geometry.getEmission());
     }
     @Override
     Color traceRay(Ray ray) {
