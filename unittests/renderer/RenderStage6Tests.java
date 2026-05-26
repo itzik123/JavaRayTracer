@@ -112,21 +112,25 @@ class RenderStage6Tests {
       createImage(scene, "emission render test");
    }
 
-   /**
-    * Produce a scene with basic 3D model - including ambient light attenuation
-    * factors of the
-    * bodies and render it into a png image with a grid
-    */
-   @Test
-   @Disabled("To be updated and enabled by students")
-   void testRenderAmbientColor() {
-      Scene scene = new Scene("Ambient colors"); // TODO by students
-      scene.geometries //
-         .add(_sphere, // TODO by students
-              _triangleLeftTop, // TODO by students
-              _triangleLeftBottom, // TODO by students
-              _triangleRightBottom // TODO by students
-         );
-      createImage(scene, "ambient render test");
-   }
+    /**
+     * Produce a scene with basic 3D model - including ambient light attenuation
+     * factors of the
+     * bodies and render it into a png image with a grid
+     */
+    @Test
+    void testRenderAmbientColor() {
+        Scene scene = new Scene("Ambient colors").setAmbientLight(new AmbientLight(new Color(WHITE)));
+
+        scene.geometries //
+                .add(
+                        _sphere.setMaterial(new primitives.Material().setKa(0.4)),
+
+                        _triangleLeftTop.setMaterial(new primitives.Material().setKa(new primitives.Double3(0, 0.8, 0))),
+
+                        _triangleLeftBottom.setMaterial(new primitives.Material().setKa(new primitives.Double3(0.8, 0, 0))),
+
+                        _triangleRightBottom.setMaterial(new primitives.Material().setKa(new primitives.Double3(0, 0, 0.8)))
+                );
+        createImage(scene, "ambient render test");
+    }
 }

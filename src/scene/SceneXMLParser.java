@@ -1,10 +1,13 @@
 package scene;
 
+import geometries.api.Geometry;
 import geometries.impl.Sphere;
 import geometries.impl.Triangle;
 import lighting.AmbientLight;
 import org.w3c.dom.*;
 import primitives.Color;
+import primitives.Double3;
+import primitives.Material;
 import primitives.Point;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.File;
@@ -39,21 +42,37 @@ public class SceneXMLParser {
         NodeList sphereNodes = root.getElementsByTagName("sphere");
         for (int i = 0; i < sphereNodes.getLength(); i++) {
             Element el = (Element) sphereNodes.item(i);
-            scene.geometries.add(new Sphere(
+            Sphere sphere = new Sphere(
                     parsePoint(el.getAttribute("center")),
-                    Double.parseDouble(el.getAttribute("radius"))));
+                    Double.parseDouble(el.getAttribute("radius")));
+            applyGeometryAttributes(sphere, el);
+            scene.geometries.add(sphere);
         }
 
         NodeList triNodes = root.getElementsByTagName("triangle");
         for (int i = 0; i < triNodes.getLength(); i++) {
             Element el = (Element) triNodes.item(i);
-            scene.geometries.add(new Triangle(
+            Triangle triangle = new Triangle(
                     parsePoint(el.getAttribute("p0")),
                     parsePoint(el.getAttribute("p1")),
-                    parsePoint(el.getAttribute("p2"))));
+                    parsePoint(el.getAttribute("p2")));
+            applyGeometryAttributes(triangle, el);
+            scene.geometries.add(triangle);
         }
 
         return scene;
+    }
+
+    /**
+     * Applies common geometry attributes like emission and material (kA).
+     */
+    private static void applyGeometryAttributes(Geometry geom, Element el) {
+        if (el.hasAttribute("emission")) {
+            geom.setEmission(parseColor(el.getAttribute("emission")));
+        }
+        if (el.hasAttribute("kA")) {
+            geom.setMaterial(new Material().setKa(parseDouble3(el.getAttribute("kA"))));
+        }
     }
 
     private static Color parseColor(String str) {
@@ -64,5 +83,13 @@ public class SceneXMLParser {
     private static Point parsePoint(String str) {
         String[] parts = str.split(" ");
         return new Point(Double.parseDouble(parts[0]), Double.parseDouble(parts[1]), Double.parseDouble(parts[2]));
+    }
+
+    private static Double3 parseDouble3(String str) {
+        String[] parts = str.split(" ");
+        if (parts.length == 1) {
+            return new Double3(Double.parseDouble(parts[0]));
+        }
+        return new Double3(Double.parseDouble(parts[0]), Double.parseDouble(parts[1]), Double.parseDouble(parts[2]));
     }
 }
