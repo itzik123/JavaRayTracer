@@ -7,6 +7,8 @@ import primitives.Vector;
 import java.util.List;
 import java.util.Objects;
 
+import static geometries.api.Intersectable.Intersection;
+
 import static java.lang.Math.sqrt;
 import static primitives.Util.alignZero;
 import static primitives.Util.isZero;
@@ -42,7 +44,7 @@ public class Tube extends RadialGeometry {
     }
 
     @Override
-    public List<Point> findIntersections(Ray ray) {
+    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
         Vector v = ray.direction();
         Vector vA = _axis.direction();
 
@@ -73,9 +75,9 @@ public class Tube extends RadialGeometry {
         if (discriminant <= 0) {
             return null;
         } else if (discriminant > 0 && alignZero((- b - sqrt(discriminant)) / (2 * a)) > 0) {
-            return List.of(ray.getPoint((0 - b - sqrt(discriminant)) / (2 * a)), ray.getPoint((sqrt(discriminant)- b) / (2 * a)));
+            return List.of(new Intersection(this, ray.getPoint((0 - b - sqrt(discriminant)) / (2 * a))), new Intersection(this, ray.getPoint((sqrt(discriminant)- b) / (2 * a))));
         } else if (discriminant > 0 && alignZero((- b + sqrt(discriminant)) / (2 * a)) > 0) {
-            return List.of(ray.getPoint((sqrt(discriminant) - b) / (2 * a)));
+            return List.of(new Intersection(this, ray.getPoint((sqrt(discriminant) - b) / (2 * a))));
         }
         return null;
     }

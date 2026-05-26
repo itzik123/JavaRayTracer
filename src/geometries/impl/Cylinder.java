@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static geometries.api.Intersectable.Intersection;
+
 import static primitives.Util.alignZero;
 import static primitives.Util.isZero;
 
@@ -66,20 +68,22 @@ public class Cylinder extends Tube {
     }
 
     @Override
-    public List<Point> findIntersections(Ray ray) {
-        List<Point> intersections = null;
-        List<Point> tubeIntersections = super.findIntersections(ray);
+    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
+        List<Intersection> intersections = null;
+        List<Intersection> tubeIntersections = super.calcIntersectionsHelper(ray);
+
         if (tubeIntersections != null) {
-            for (Point p : tubeIntersections) {
+            for (Intersection inter : tubeIntersections) {
+                Point p = inter.point;
                 double t = alignZero(_axis.direction().dotProduct(p.subtract(_axis.origin())));
                 if (t > 0 && t < _height) {
                     if (intersections == null) intersections = new ArrayList<>();
-                    intersections.add(p);
+                    intersections.add(inter);
                 }
                 else if (isZero(t) || isZero(t - _height)) {
                     if (!isZero(ray.direction().dotProduct(_axis.direction()))) {
                         if (intersections == null) intersections = new ArrayList<>();
-                        intersections.add(p);
+                        intersections.add(inter);
                     }
                 }
             }
@@ -92,7 +96,7 @@ public class Cylinder extends Tube {
                 if (intersections == null) {
                     intersections = new ArrayList<>();
                 }
-                intersections.add(p);
+                intersections.add(new Intersection(this, p));
             }
         }
 
@@ -104,7 +108,7 @@ public class Cylinder extends Tube {
                 if (intersections == null) {
                     intersections = new ArrayList<>();
                 }
-                intersections.add(p);
+                intersections.add(new Intersection(this, p));
             }
         }
 
@@ -113,13 +117,14 @@ public class Cylinder extends Tube {
         }
 
         if (intersections.size() == 2) {
-            Point p1 = intersections.get(0);
-            Point p2 = intersections.get(1);
-            if (p1.equals(p2)){
+            Intersection i1 = intersections.get(0);
+            Intersection i2 = intersections.get(1);
+            if (i1.point.equals(i2.point)){
                 return List.of(intersections.getFirst());
             }
-            return (alignZero(p1.distanceSquared(ray.origin()) - p2.distanceSquared(ray.origin())) > 0) ? List.of(p2, p1) : List.of(p1, p2);
+            return (alignZero(i1.point.distanceSquared(ray.origin()) - i2.point.distanceSquared(ray.origin())) > 0) ? List.of(i2, i1) : List.of(i1, i2);
         }
+
         return List.of(intersections.get(0));
     }
 

@@ -8,6 +8,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static geometries.api.Intersectable.Intersection;
+
 import static java.lang.Math.sqrt;
 import static primitives.Util.alignZero;
 import static primitives.Util.isZero;
@@ -36,9 +38,9 @@ public class Sphere extends RadialGeometry {
     }
 
     @Override
-    public List<Point> findIntersections(Ray ray){
+    protected List<Intersection> calcIntersectionsHelper(Ray ray){
         if (ray.origin().equals(_center)) {
-            return List.of(ray.getPoint(_radius));
+            return List.of(new Intersection(this, ray.getPoint(_radius)));
         }
         Vector vector = _center.subtract(ray.origin());
         double tm = vector.dotProduct(ray.direction());
@@ -48,9 +50,9 @@ public class Sphere extends RadialGeometry {
         }
         double th = alignZero(sqrt(_radiusSquared - dSquared));
         if (alignZero(tm - th) > 0){
-            return List.of(ray.getPoint(tm - th), ray.getPoint(tm + th));
+            return List.of(new Intersection(this, ray.getPoint(tm - th)), new Intersection(this, ray.getPoint(tm + th)));
         } else if (alignZero(tm + th) > 0){
-            return List.of(ray.getPoint(tm + th));
+            return List.of(new Intersection(this, ray.getPoint(tm + th)));
         }
         return null;
     }
