@@ -64,6 +64,9 @@ public class Plane extends Geometry {
             return null;
         }
         double t = alignZero(_normal.dotProduct(_point.subtract(ray.origin())) / _normal.dotProduct(ray.direction()));
+        if (t <= 0) {
+            return null;
+        }
         Point p = ray.getPoint(t);
         return List.of(new Intersection(this, p));
     }
