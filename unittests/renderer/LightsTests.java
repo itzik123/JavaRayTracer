@@ -13,6 +13,7 @@ import lighting.PointLight;
 import lighting.SpotLight;
 import primitives.*;
 import scene.Scene;
+import scene.SceneXMLParser;
 
 import java.util.List;
 
@@ -260,6 +261,29 @@ class LightsTests {
     }
 
     /**
+     * Produce a picture of a sphere lighted by a spotlight using XML
+     */
+    @Test
+    @SuppressWarnings("java:S109")
+    void testSphereSpotXml() {
+        try {
+            Scene scene = SceneXMLParser.parse("sphere_spot_test.xml");
+
+            Camera.getBuilder()
+                    .setRayTracer(scene, RayTracerType.SIMPLE)
+                    .setLocation(new Point(0, 0, 1000))
+                    .setDirection(Point.ZERO, Vector.AXIS_Y)
+                    .setVpSize(150, 150).setVpDistance(1000)
+                    .setResolution(500, 500)
+                    .build()
+                    .renderImage()
+                    .writeToImage("lightSphereSpotXml");
+        } catch (Exception e) {
+            org.junit.jupiter.api.Assertions.fail("Failed loading XML scene: " + e.getMessage());
+        }
+    }
+
+    /**
      * Custom cool scene demonstrating multiple shapes, colors, emissions, and light sources!
      */
     @Test
@@ -438,7 +462,7 @@ class LightsTests {
                 .setDirection(Point.ZERO, Vector.AXIS_Y)
                 // הגדלנו את שדה הראייה ל-350 כדי "להתרחק" ולראות שוליים שחורים
                 .setVpSize(1000, 1000).setVpDistance(1000)
-                .setResolution(1000, 1000) // !!! שנה כאן ל-5000 אחרי הטסט !!!
+                .setResolution(5000, 5000) // !!! שנה כאן ל-5000 אחרי הטסט !!!
                 .build()
                 .renderImage()
                 .writeToImage("milkyWayEpicGalaxyV6");
