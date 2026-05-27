@@ -14,6 +14,8 @@ public class SpotLight extends PointLight {
 
     private final Vector _direction;
 
+    private int _narrowBeam = 1;
+
     public SpotLight(Color intensity, Point position, Vector direction) {
         super(intensity, position);
         _direction = direction.normalize();
@@ -42,12 +44,17 @@ public class SpotLight extends PointLight {
         Color pointIntensity = super.getIntensity(p);
 
         Vector l = getL(p);
-        double dirDotL = alignZero(_direction.dotProduct(l));
+        double dirDotL = Math.pow(alignZero(_direction.dotProduct(l)), _narrowBeam);
 
         if (dirDotL <= 0) {
             return Color.BLACK;
         }
 
         return pointIntensity.scale(dirDotL);
+    }
+
+    public SpotLight setNarrowBeam(int _narrowBeam) {
+        this._narrowBeam = _narrowBeam;
+        return this;
     }
 }
