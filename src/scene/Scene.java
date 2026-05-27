@@ -2,7 +2,11 @@ package scene;
 
 import geometries.impl.Geometries;
 import lighting.AmbientLight;
+import lighting.LightSource;
 import primitives.Color;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Represents a scene holding all the elements for rendering.
@@ -25,6 +29,8 @@ public class Scene {
     /** The 3D geometric bodies in the scene. Default is an empty collection. */
     public Geometries geometries = new Geometries();
 
+    /** The light sources of the scene. Default NONE*/
+    public List<LightSource> lights = new ArrayList<>();
     /**
      * Constructor to initialize a scene with a given name.
      *
