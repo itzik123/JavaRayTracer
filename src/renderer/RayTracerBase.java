@@ -25,7 +25,7 @@ abstract class RayTracerBase {
         return intersection.vNormal != 0;
     }
 
-    protected boolean setLightSource(Intersection intersection, LightSource light) {
+    protected boolean preprocessLightSource(Intersection intersection, LightSource light) {
         intersection.light = light;
         intersection.l = light.getL(intersection.point);
         intersection.lNormal = alignZero(intersection.l.dotProduct(intersection.normal));
