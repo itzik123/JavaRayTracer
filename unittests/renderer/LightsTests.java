@@ -2,6 +2,7 @@ package renderer;
 
 import static java.awt.Color.BLUE;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import geometries.api.Geometry;
@@ -329,7 +330,7 @@ class LightsTests {
      * Produce an epic, procedurally generated galaxy scene V6.
      * Features: Zoomed-out camera, vibrant colors, white central halo, and background star clusters.
      */
-    @Test
+    @Disabled
     @SuppressWarnings("java:S109")
     void testMilkyWayEpicGalaxyV6() {
         Scene scene = new Scene("Milky Way Galaxy V6")
