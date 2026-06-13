@@ -20,6 +20,21 @@ public class Ray {
      */
     private final Vector _direction;
 
+    /** Constant for shifting the ray origin to prevent self-shadowing/reflections */
+    private static final double DELTA = 0.1;
+
+    /**
+     * Constructor for a Ray with a slight displacement along the normal
+     * to avoid self-intersections (Shadow Acne).
+     * * @param head      original starting point of the ray
+     * @param direction direction of the ray
+     * @param normal    normal vector at the starting point
+     */
+    public Ray(Point head, Vector direction, Vector normal) {
+        Vector epsVector = normal.scale(normal.dotProduct(direction) > 0 ? DELTA : -DELTA);
+        this._origin = head.add(epsVector);
+        this._direction = direction.normalize();
+    }
     /**
      * Constructor to initialize a ray with an origin point and a direction vector.
      * The direction vector is automatically normalized.

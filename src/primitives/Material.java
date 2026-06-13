@@ -22,6 +22,13 @@ public class Material {
     /** Shininess factor (power of specular reflection) */
     public int nShininess = 0;
 
+    /** Transparency attenuation factor */
+    public Double3 kT = Double3.ZERO;
+
+    /** Reflection attenuation factor */
+    public Double3 kR = Double3.ZERO;
+
+
     /**
      * Default constructor to satisfy JavaDoc generator.
      */
@@ -96,6 +103,45 @@ public class Material {
      */
     public Material setKa(double kA) {
         this.kA = new Double3(kA);
+        return this;
+    }
+    /**
+     * Sets the transparency attenuation factor (kT).
+     * @param kT the transparency attenuation factor as a Double3 object
+     * @return the current Material object
+     */
+    public Material setKt(Double3 kT) {
+        this.kT = kT;
+        return this;
+    }
+
+    /**
+     * Sets the transparency attenuation factor (kT).
+     * @param kT the transparency attenuation factor as a single double value
+     * @return the current Material object
+     */
+    public Material setKt(double kT) {
+        this.kT = new Double3(kT);
+        return this;
+    }
+
+    /**
+     * Sets the reflection attenuation factor (kR).
+     * @param kR the reflection attenuation factor as a Double3 object
+     * @return the current Material object
+     */
+    public Material setKr(Double3 kR) {
+        this.kR = kR;
+        return this;
+    }
+
+    /**
+     * Sets the reflection attenuation factor (kR).
+     * @param kR the reflection attenuation factor as a single double value
+     * @return the current Material object
+     */
+    public Material setKr(double kR) {
+        this.kR = new Double3(kR);
         return this;
     }
 }
