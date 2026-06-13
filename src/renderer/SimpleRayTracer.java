@@ -23,28 +23,17 @@ class SimpleRayTracer extends RayTracerBase {
      * @return true if the point is unshaded, false if it's in shadow
      */
     private boolean unshaded(Intersection intersection) {
-        Vector lightDirection = intersection.l.scale(-1);
+        Vector lightDirection = intersection.light.getL(intersection.point).scale(-1); // וקטור מהנקודה לאור
 
         Vector epsVector = intersection.normal.scale(intersection.lNormal < 0 ? DELTA : -DELTA);
         Point point = intersection.point.add(epsVector);
-
-
         Ray lightRay = new Ray(point, lightDirection);
 
+        double maxDistance = intersection.light.getDistance(intersection.point);
 
-        var intersections = _scene.geometries.calcIntersections(lightRay);
-        if (intersections == null) {
-            return true;
-        }
+        var intersections = _scene.geometries.calcIntersections(lightRay, maxDistance);
 
-        double lightDistance = intersection.light.getDistance(intersection.point);
-        for (Intersection geo : intersections) {
-            if (primitives.Util.alignZero(geo.point.distance(intersection.point) - lightDistance) <= 0) {
-                return false;
-            }
-        }
-
-        return true;
+        return intersections == null;
     }
     /**
      * Constructor.

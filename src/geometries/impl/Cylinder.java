@@ -68,9 +68,9 @@ public class Cylinder extends Tube {
     }
 
     @Override
-    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
+    protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
         List<Intersection> intersections = null;
-        List<Intersection> tubeIntersections = super.calcIntersectionsHelper(ray);
+        List<Intersection> tubeIntersections = super.calcIntersectionsHelper(ray, maxDistance);
 
         if (tubeIntersections != null) {
             for (Intersection inter : tubeIntersections) {
@@ -92,7 +92,8 @@ public class Cylinder extends Tube {
         List<Point> bottomBaseIntersection = _bottomBase.findIntersections(ray);
         if (bottomBaseIntersection != null) {
             Point p = bottomBaseIntersection.getFirst();
-            if (alignZero(p.distanceSquared(_axis.origin()) - _radius * _radius) <= 0) {
+            if (alignZero(p.distanceSquared(_axis.origin()) - _radius * _radius) <= 0 &&
+                    alignZero(p.distance(ray.origin()) - maxDistance) <= 0) {
                 if (intersections == null) {
                     intersections = new ArrayList<>();
                 }
@@ -104,7 +105,8 @@ public class Cylinder extends Tube {
         if (topBaseIntersection != null) {
             Point p = topBaseIntersection.getFirst();
             Point topCenter = _axis.getPoint(_height);
-            if (alignZero(p.distanceSquared(topCenter) - _radius * _radius) <= 0) {
+            if (alignZero(p.distanceSquared(topCenter) - _radius * _radius) <= 0 &&
+                    alignZero(p.distance(ray.origin()) - maxDistance) <= 0) {
                 if (intersections == null) {
                     intersections = new ArrayList<>();
                 }

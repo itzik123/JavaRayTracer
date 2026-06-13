@@ -59,16 +59,15 @@ public class Plane extends Geometry {
     }
 
     @Override
-    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
+    protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
         if (_point.equals(ray.origin()) || isZero(_normal.dotProduct(ray.direction()))) {
             return null;
         }
         double t = alignZero(_normal.dotProduct(_point.subtract(ray.origin())) / _normal.dotProduct(ray.direction()));
-        if (t <= 0) {
+        if (alignZero(t) <= 0 || alignZero(t - maxDistance) > 0) {
             return null;
         }
-        Point p = ray.getPoint(t);
-        return List.of(new Intersection(this, p));
+        return List.of(new Intersection(this, ray.getPoint(t)));
     }
 
     @Override

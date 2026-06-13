@@ -14,21 +14,31 @@ import java.util.List;
  */
 public abstract class Intersectable {
     /**
-     * Helper method to calculate intersections, implemented by subclasses (NVI pattern).
-     * @param ray the ray intersecting the geometry
-     * @return list of intersections (geometry and point), or null if there are no intersections
-     */
-    protected abstract List<Intersection> calcIntersectionsHelper(Ray ray);
-
-    /**
-     * Calculates intersections of a ray with the geometry.
-     * This is the public non-virtual interface method.
-     * @param ray the intersecting ray
-     * @return list of intersections, or null if there are no intersections
+     * Finds all intersections of a ray with the geometries.
+     * @param ray the ray to intersect with
+     * @return a list of intersection points
      */
     public final List<Intersection> calcIntersections(Ray ray) {
-        return calcIntersectionsHelper(ray);
+        return calcIntersections(ray, Double.POSITIVE_INFINITY);
     }
+
+    /**
+     * Finds all intersections of a ray with the geometries up to a maximum distance.
+     * @param ray the ray to intersect with
+     * @param maxDistance the maximum distance to search for intersections
+     * @return a list of intersection points
+     */
+    public final List<Intersection> calcIntersections(Ray ray, double maxDistance) {
+        return calcIntersectionsHelper(ray, maxDistance);
+    }
+
+    /**
+     * Abstract helper method to calculate intersections.
+     * @param ray the ray to intersect with
+     * @param maxDistance the maximum distance to search for intersections
+     * @return a list of intersection points
+     */
+    protected abstract List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance);
 
     /**
      * Finds intersection points of a ray with the geometry.

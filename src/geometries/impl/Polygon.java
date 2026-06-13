@@ -81,7 +81,7 @@ public class Polygon extends Geometry {
    }
 
     @Override
-    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
+    protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
        try {
            boolean isPositive = false;
            int size = _vertices.size();

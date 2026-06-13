@@ -38,21 +38,35 @@ public class Sphere extends RadialGeometry {
     }
 
     @Override
-    protected List<Intersection> calcIntersectionsHelper(Ray ray){
+    protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance){
         if (ray.origin().equals(_center)) {
             return List.of(new Intersection(this, ray.getPoint(_radius)));
         }
-        Vector vector = _center.subtract(ray.origin());
-        double tm = vector.dotProduct(ray.direction());
-        double dSquared = alignZero(vector.lengthSquared() - tm * tm);
+
+        Vector u = _center.subtract(ray.origin());
+        double tm = alignZero(u.dotProduct(ray.direction()));
+        double dSquared = alignZero(u.lengthSquared() - tm * tm);
+
         if (alignZero(dSquared - _radiusSquared) >= 0) {
             return null;
         }
+
         double th = alignZero(sqrt(_radiusSquared - dSquared));
-        if (alignZero(tm - th) > 0){
-            return List.of(new Intersection(this, ray.getPoint(tm - th)), new Intersection(this, ray.getPoint(tm + th)));
-        } else if (alignZero(tm + th) > 0){
-            return List.of(new Intersection(this, ray.getPoint(tm + th)));
+
+        double t1 = alignZero(tm - th);
+        double t2 = alignZero(tm + th);
+
+        boolean validT1 = t1 > 0 && alignZero(t1 - maxDistance) <= 0;
+        boolean validT2 = t2 > 0 && alignZero(t2 - maxDistance) <= 0;
+
+        if (validT1 && validT2) {
+            return List.of(new Intersection(this, ray.getPoint(t1)), new Intersection(this, ray.getPoint(t2)));
+        }
+        if (validT1) {
+            return List.of(new Intersection(this, ray.getPoint(t1)));
+        }
+        if (validT2) {
+            return List.of(new Intersection(this, ray.getPoint(t2)));
         }
         return null;
     }

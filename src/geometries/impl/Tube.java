@@ -44,7 +44,7 @@ public class Tube extends RadialGeometry {
     }
 
     @Override
-    protected List<Intersection> calcIntersectionsHelper(Ray ray) {
+    protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
         Vector v = ray.direction();
         Vector vA = _axis.direction();
 
@@ -72,15 +72,28 @@ public class Tube extends RadialGeometry {
             c = alignZero(deltaP0.lengthSquared() - deltaP0Va * deltaP0Va - _radius * _radius);
         }
         double discriminant = alignZero(b * b - 4 * a * c);
+
         if (discriminant <= 0) {
             return null;
-        } else if (discriminant > 0 && alignZero((- b - sqrt(discriminant)) / (2 * a)) > 0) {
-            return List.of(new Intersection(this, ray.getPoint((0 - b - sqrt(discriminant)) / (2 * a))), new Intersection(this, ray.getPoint((sqrt(discriminant)- b) / (2 * a))));
-        } else if (discriminant > 0 && alignZero((- b + sqrt(discriminant)) / (2 * a)) > 0) {
-            return List.of(new Intersection(this, ray.getPoint((sqrt(discriminant) - b) / (2 * a))));
         }
+
+        double t1 = alignZero((-b - sqrt(discriminant)) / (2 * a));
+        double t2 = alignZero((-b + sqrt(discriminant)) / (2 * a));
+
+        boolean validT1 = t1 > 0 && alignZero(t1 - maxDistance) <= 0;
+        boolean validT2 = t2 > 0 && alignZero(t2 - maxDistance) <= 0;
+
+        if (validT1 && validT2) {
+            return List.of(new Intersection(this, ray.getPoint(t1)), new Intersection(this, ray.getPoint(t2)));
+        } else if (validT1) {
+            return List.of(new Intersection(this, ray.getPoint(t1)));
+        } else if (validT2) {
+            return List.of(new Intersection(this, ray.getPoint(t2)));
+        }
+
         return null;
     }
+
 
     @Override
     public String toString() {
