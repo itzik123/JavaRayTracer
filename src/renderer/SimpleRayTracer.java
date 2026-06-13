@@ -2,10 +2,7 @@ package renderer;
 
 import geometries.api.Intersectable.Intersection;
 import lighting.LightSource;
-import primitives.Color;
-import primitives.Double3;
-import primitives.Ray;
-import primitives.Vector;
+import primitives.*;
 import scene.Scene;
 
 import static primitives.Util.alignZero;
@@ -17,6 +14,38 @@ import static primitives.Util.isZero;
  */
 class SimpleRayTracer extends RayTracerBase {
 
+    /** Constant for shifting the ray origin to prevent self-shadowing */
+    private static final double DELTA = 0.1;
+
+    /**
+     * Checks whether a point is unshaded by other objects from a specific light source.
+     * @param intersection the intersection point containing the geometric data and light source
+     * @return true if the point is unshaded, false if it's in shadow
+     */
+    private boolean unshaded(Intersection intersection) {
+        Vector lightDirection = intersection.l.scale(-1);
+
+        Vector epsVector = intersection.normal.scale(intersection.lNormal < 0 ? DELTA : -DELTA);
+        Point point = intersection.point.add(epsVector);
+
+
+        Ray lightRay = new Ray(point, lightDirection);
+
+
+        var intersections = _scene.geometries.calcIntersections(lightRay);
+        if (intersections == null) {
+            return true;
+        }
+
+        double lightDistance = intersection.light.getDistance(intersection.point);
+        for (Intersection geo : intersections) {
+            if (primitives.Util.alignZero(geo.point.distance(intersection.point) - lightDistance) <= 0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
     /**
      * Constructor.
      * @param scene the scene to render
@@ -53,8 +82,10 @@ class SimpleRayTracer extends RayTracerBase {
         Color color = intersection.geometry.getEmission();
         for (LightSource lightSource : _scene.lights) {
             if (preprocessLightSource(intersection, lightSource)) {
-                color = color.add(lightSource.getIntensity(intersection.point)
-                        .scale(calcDiffuse(intersection).add(calcSpecular(intersection))));
+                if (unshaded(intersection)) {
+                    color = color.add(lightSource.getIntensity(intersection.point)
+                            .scale(calcDiffuse(intersection).add(calcSpecular(intersection))));
+                }
             }
         }
         return color;
