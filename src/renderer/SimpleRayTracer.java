@@ -60,6 +60,32 @@ class SimpleRayTracer extends RayTracerBase {
 
         return true;
     }
+
+    /**
+     * Calculates the transparency attenuation factor for shadows.
+     * @param intersection the intersection point containing the geometric data and light source
+     * @return the accumulated transparency attenuation factor (Double3)
+     */
+    private Double3 transparency(Intersection intersection) {
+        Vector lightDirection = intersection.light.getL(intersection.point).scale(-1);
+        Ray lightRay = new Ray(intersection.point, lightDirection, intersection.normal);
+
+        double maxDistance = intersection.light.getDistance(intersection.point);
+        var intersections = _scene.geometries.calcIntersections(lightRay, maxDistance);
+
+        if (intersections == null) return Double3.ONE;
+
+        Double3 ktr = Double3.ONE;
+        for (Intersection geo : intersections) {
+            ktr = ktr.product(geo.material.kT);
+
+            if (ktr.isLowerThan(MIN_CALC_COLOR_K)) {
+                return Double3.ZERO;
+            }
+        }
+        return ktr;
+    }
+
     /**
      * Constructor.
      * @param scene the scene to render
@@ -90,7 +116,7 @@ class SimpleRayTracer extends RayTracerBase {
      * combining local and global effects.
      */
     private Color calcColor(Intersection intersection, int level, Double3 k) {
-        Color color = calcLocalEffects(intersection);
+        Color color = calcLocalEffects(intersection, k);
         return 1 == level ? color
                 : color.add(calcGlobalEffects(intersection, level, k));
     }
@@ -150,18 +176,23 @@ class SimpleRayTracer extends RayTracerBase {
         return !preprocessIntersection(intersection, ray.direction()) ? Color.BLACK
                 : calcColor(intersection, level - 1, kkx).scale(kx);
     }
+
     /**
      * Calculates the local lighting effects (Emission + Diffuse + Specular) for all light sources.
      * @param intersection the intersection point context
+     * @param k the accumulated attenuation factor from recursion
      * @return the local color contribution
      */
-    private Color calcLocalEffects(Intersection intersection) {
+    private Color calcLocalEffects(Intersection intersection, Double3 k) {
         Color color = intersection.geometry.getEmission();
         for (LightSource lightSource : _scene.lights) {
             if (preprocessLightSource(intersection, lightSource)) {
-                if (unshaded(intersection)) {
-                    color = color.add(lightSource.getIntensity(intersection.point)
-                            .scale(calcDiffuse(intersection).add(calcSpecular(intersection))));
+
+                Double3 ktr = transparency(intersection);
+
+                if (ktr.product(k).isGreaterThan(MIN_CALC_COLOR_K)) {
+                    Color lightIntensity = lightSource.getIntensity(intersection.point).scale(ktr);
+                    color = color.add(lightIntensity.scale(calcDiffuse(intersection).add(calcSpecular(intersection))));
                 }
             }
         }

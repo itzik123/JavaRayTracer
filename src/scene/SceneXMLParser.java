@@ -141,7 +141,14 @@ public class SceneXMLParser {
             material.setShininess(Integer.parseInt(el.getAttribute("nShininess")));
             hasMaterial = true;
         }
-
+        if (el.hasAttribute("kT")) {
+            material.setKt(parseDouble3(el.getAttribute("kT")));
+            hasMaterial = true;
+        }
+        if (el.hasAttribute("kR")) {
+            material.setKr(parseDouble3(el.getAttribute("kR")));
+            hasMaterial = true;
+        }
         if (hasMaterial) {
             geom.setMaterial(material);
         }
