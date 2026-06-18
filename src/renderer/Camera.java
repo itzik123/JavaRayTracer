@@ -1,10 +1,10 @@
 package renderer;
 
-import primitives.Color;
-import primitives.Point;
-import primitives.Ray;
-import primitives.Vector;
+import primitives.*;
 import scene.Scene;
+
+import java.util.LinkedList;
+import java.util.List;
 
 import static primitives.Util.isZero;
 
@@ -56,6 +56,9 @@ public class Camera implements Cloneable {
     /** The ray tracer */
     private RayTracerBase _rayTracer;
 
+    /** The target area manager for Anti-Aliasing super-sampling */
+    private TargetArea _antiAliasingTargetArea = new TargetArea();
+
     /**
      * Private default constructor to prevent direct instantiation.
      * Use {@link #getBuilder()} to construct a Camera.
@@ -80,8 +83,18 @@ public class Camera implements Cloneable {
     }
 
     private void castRay(int xIndex, int yIndex) {
-        Ray ray = constructRay(xIndex, yIndex);
-        _imageWriter.writePixel(xIndex, yIndex, _rayTracer.traceRay(ray));
+        List<Ray> rays = constructRays(xIndex, yIndex);
+        Color finalColor = Color.BLACK;
+
+        // עקיבה אחרי כל קרן באלומה וסכימת הצבעים
+        for (Ray ray : rays) {
+            finalColor = finalColor.add(_rayTracer.traceRay(ray));
+        }
+
+        // מיצוע הצבע בהתאם לכמות הדגימות
+        finalColor = finalColor.reduce(rays.size());
+
+        _imageWriter.writePixel(xIndex, yIndex, finalColor);
     }
 
     public Camera printGrid(int interval, Color color) {
@@ -111,18 +124,49 @@ public class Camera implements Cloneable {
      * @return a new Ray originating from the camera and passing through the specified pixel
      */
     public Ray constructRay(int xIndex, int yIndex) {
+        Point pIJ = getPixelCenter(xIndex, yIndex);
+
+        return new Ray(_p0, pIJ.subtract(_p0));
+    }
+
+    /**
+     * Calculates the center point of a specific pixel on the view plane.
+     */
+    private Point getPixelCenter(int xIndex, int yIndex) {
         double xJ = (xIndex - (_nX - 1) / 2.0) * _pixelWidth;
         double yI = -(yIndex - (_nY - 1) / 2.0) * _pixelHeight;
 
         Point pIJ = _vpCenter;
 
-        if (!isZero(xJ))
-            pIJ = pIJ.add(_vRight.scale(xJ));
+        if (!isZero(xJ)) pIJ = pIJ.add(_vRight.scale(xJ));
+        if (!isZero(yI)) pIJ = pIJ.add(_vUp.scale(yI));
 
-        if (!isZero(yI))
-            pIJ = pIJ.add(_vUp.scale(yI));
+        return pIJ;
+    }
 
-        return new Ray(_p0, pIJ.subtract(_p0));
+    /**
+     * Constructs a beam of rays passing through a specific pixel for super-sampling.
+     */
+    public List<Ray> constructRays(int xIndex, int yIndex) {
+        List<Ray> rays = new LinkedList<>();
+        Point pIJ = getPixelCenter(xIndex, yIndex);
+
+        List<Point2D> samplePoints = _antiAliasingTargetArea.getSamplePoints();
+
+        for (Point2D offset : samplePoints) {
+            Point pSample = pIJ;
+
+            // הזזת הנקודה על ה-View Plane בהתאם להיסט הדו-ממדי
+            if (!isZero(offset.x())) {
+                pSample = pSample.add(_vRight.scale(offset.x()));
+            }
+            if (!isZero(offset.y())) {
+                pSample = pSample.add(_vUp.scale(offset.y()));
+            }
+
+            rays.add(new Ray(_p0, pSample.subtract(_p0)));
+        }
+        return rays;
     }
 
     @Override
@@ -235,6 +279,14 @@ public class Camera implements Cloneable {
         }
 
         /**
+         * Enables and configures Anti-Aliasing for the camera.
+         */
+        public Builder setAntiAliasing(int resolution, SamplingPattern pattern) {
+            _camera._antiAliasingTargetArea.setResolution(resolution).setSamplingPattern(pattern);
+            return this;
+        }
+
+        /**
          * Finalizes the camera construction, performs checks, calculates derived fields,
          * and returns a cloned instance of the fully configured camera.
          * @return a new Camera instance, or null if cloning fails
@@ -304,6 +356,8 @@ public class Camera implements Cloneable {
             _camera._vpCenter = _camera._p0.add(_camera._vTo.scale(_camera._distance));
             _camera._pixelWidth = _camera._width / _camera._nX;
             _camera._pixelHeight = _camera._height / _camera._nY;
+
+            _camera._antiAliasingTargetArea.setSize(_camera._pixelWidth, _camera._pixelHeight);
         }
     }
 }
