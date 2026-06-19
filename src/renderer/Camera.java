@@ -9,6 +9,9 @@ import java.util.stream.IntStream;
 
 import static primitives.Util.isZero;
 
+import renderer.postprocessing.PostProcessingEngine;
+import renderer.postprocessing.PostProcessFilter;
+
 /**
  * Represents a camera in 3D space, utilizing the Builder design pattern.
  * @author itzik123
@@ -71,6 +74,9 @@ public class Camera implements Cloneable {
 
     /** Pixel manager for supporting multi-threading and debug print */
     private PixelManager _pixelManager;
+
+    /** The post-processing engine for 2D image filters */
+    private PostProcessingEngine _postProcessingEngine = new PostProcessingEngine();
 
 
     /**
@@ -177,6 +183,7 @@ public class Camera implements Cloneable {
      * @param imageName the name of the output image file
      */
     public void writeToImage(String imageName) {
+        _imageWriter.applyPostProcessing(_postProcessingEngine);
         _imageWriter.writeToImage(imageName);
     }
 
@@ -291,6 +298,13 @@ public class Camera implements Cloneable {
             return this;
         }
 
+        /**
+         * Adds a 2D post-processing filter to the camera's pipeline.
+         */
+        public Builder addPostProcessFilter(PostProcessFilter filter) {
+            _camera._postProcessingEngine.addFilter(filter);
+            return this;
+        }
 
         /**
          * Set multi-threading.

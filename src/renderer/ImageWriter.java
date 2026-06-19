@@ -23,7 +23,7 @@ final class ImageWriter {
    private static final String FOLDER_PATH = System.getProperty("user.dir") + "/images";
 
    /** Internal image buffer (matrix of pixel colors) */
-   private final BufferedImage _image;
+   private BufferedImage _image;
 
    /**
     * Creates an image writer for the given resolution.
@@ -55,6 +55,16 @@ final class ImageWriter {
          throw new IllegalStateException("I/O error while writing image to " + FOLDER_PATH, e);
       }
    }
+
+    /**
+     * Applies post-processing filters to the image before it is written to disk.
+     * @param engine the post-processing engine containing the filters
+     */
+    void applyPostProcessing(renderer.postprocessing.PostProcessingEngine engine) {
+        if (engine != null) {
+            _image = engine.process(_image);
+        }
+    }
 
    /**
     * Writes a color to the specified pixel.
