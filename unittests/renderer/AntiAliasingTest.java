@@ -82,9 +82,19 @@ public class AntiAliasingTest {
         // --- הרצה 2: עם החלקת עקומות (Anti-Aliasing On) ---
         // שימוש בתבנית Jittered עם רזולוציה 9x9 (81 קרניים לפיקסל)
         long start2 = System.currentTimeMillis();
-        cameraBuilder.setAntiAliasing(9, new Jittered()).build()
-                .renderImage()
-                .writeToImage("AntiAliasing_Showcase_On");
+
+        // 1. הגדרת הפרמטרים ובניית המצלמה ושמירתה למשתנה
+        Camera camera = cameraBuilder.setAntiAliasing(81, new Jittered())
+                .setMultithreading(-2)
+                .setDebugPrint(0.1)
+                .build();
+
+        camera.renderImage();
+
+        System.out.println();
+
+        camera.writeToImage("AntiAliasing_Showcase_On");
+
         long time2 = System.currentTimeMillis() - start2;
         System.out.println("Render time WITH Anti-Aliasing (9x9 Jittered): " + time2 / 1000.0 + " seconds");
     }

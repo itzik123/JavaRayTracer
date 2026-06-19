@@ -174,7 +174,7 @@ class TransparencyReflectionTests {
         Random rnd = new Random(111); // Seed קבוע כדי שהתוצאה תהיה יפה ועקבית
 
         // 5. Procedural Vortex: 500 Objects (Spheres, Triangles, Cylinders)
-        for (int i = 0; i < 500; i++) {
+        for (int i = 0; i < 100; i++) {
             double height = -70 + rnd.nextDouble() * 250;
             double radius = 55 + (height + 70) * 0.4 + rnd.nextDouble() * 40; // צורת טורנדו
             double angle = height * 0.15 + rnd.nextDouble() * Math.PI * 2;
@@ -225,10 +225,13 @@ class TransparencyReflectionTests {
                 .setLocation(new Point(0, 10, 180)) // מבט מלמטה כלפי מעלה אל תוך המערבולת
                 .setDirection(new Point(0, 30, -150).subtract(new Point(0, 10, 180)), new Vector(0, 1, 0))
                 .setVpSize(200, 200).setVpDistance(150)
-                .setResolution(1000, 1000) // תתכונן למעבד רותח
+                .setResolution(600, 600) // תתכונן למעבד רותח
+                .setAntiAliasing(9, new Jittered())
+                .setMultithreading(-2)
+                .setDebugPrint(0.1)
                 .build()
                 .renderImage()
-                .writeToImage("bonus1_shattered_dimension");
+                .writeToImage("bonus1_shattered_dimension_v2");
     }
 
     @Test
@@ -350,7 +353,10 @@ class TransparencyReflectionTests {
                 .setLocation(cameraLoc)
                 .setDirection(vTo, vUp)
                 .setVpSize(150, 150).setVpDistance(140)
-                .setResolution(5000, 5000)
+                .setResolution(1000, 1000)
+                .setAntiAliasing(9, new Jittered())
+                .setMultithreading(-2)
+                .setDebugPrint(0.1)
                 .build()
                 .renderImage()
                 .writeToImage("classic_glass_cube_v10");
