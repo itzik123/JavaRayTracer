@@ -174,7 +174,7 @@ class TransparencyReflectionTests {
         Random rnd = new Random(111); // Seed קבוע כדי שהתוצאה תהיה יפה ועקבית
 
         // 5. Procedural Vortex: 500 Objects (Spheres, Triangles, Cylinders)
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 500; i++) {
             double height = -70 + rnd.nextDouble() * 250;
             double radius = 55 + (height + 70) * 0.4 + rnd.nextDouble() * 40; // צורת טורנדו
             double angle = height * 0.15 + rnd.nextDouble() * Math.PI * 2;
@@ -225,9 +225,9 @@ class TransparencyReflectionTests {
                 .setLocation(new Point(0, 10, 180)) // מבט מלמטה כלפי מעלה אל תוך המערבולת
                 .setDirection(new Point(0, 30, -150).subtract(new Point(0, 10, 180)), new Vector(0, 1, 0))
                 .setVpSize(200, 200).setVpDistance(150)
-                .setResolution(600, 600) // תתכונן למעבד רותח
+                .setResolution(1000, 1000) // תתכונן למעבד רותח
                 .setAntiAliasing(9, new Jittered())
-                .setMultithreading(-2)
+                .setMultithreading(4)
                 .setDebugPrint(0.1)
                 .build()
                 .renderImage()
@@ -241,19 +241,30 @@ class TransparencyReflectionTests {
                 .setBackground(new Color(110, 115, 140))
                 .setAmbientLight(new AmbientLight(new Color(25, 25, 30)));
 
-        // --- Metallic Spheres Materials (From v6 - Perfect Chrome Look) ---
-        Material redMetal    = new Material().setKd(new Double3(0.6, 0.1, 0.1)).setKa(new Double3(0.6, 0.1, 0.1)).setKs(0.8).setShininess(300).setKr(0.25);
-        Material greenMetal  = new Material().setKd(new Double3(0.1, 0.6, 0.1)).setKa(new Double3(0.1, 0.6, 0.1)).setKs(0.8).setShininess(300).setKr(0.25);
-        Material blueMetal   = new Material().setKd(new Double3(0.1, 0.1, 0.6)).setKa(new Double3(0.1, 0.1, 0.6)).setKs(0.8).setShininess(300).setKr(0.25);
-        Material yellowMetal = new Material().setKd(new Double3(0.6, 0.6, 0.1)).setKa(new Double3(0.6, 0.6, 0.1)).setKs(0.8).setShininess(300).setKr(0.25);
+        // --- Metallic Spheres Materials (Brushed/Murky Metal Look) ---
+        // רדיוס גדול של 0.25 יפזר את ההשתקפות (kR) משמעותית ויהפוך את המתכת לעכורה ומאט.
+        Material redMetal    = new Material().setKd(new Double3(0.6, 0.1, 0.1)).setKa(new Double3(0.6, 0.1, 0.1)).setKs(0.8).setShininess(300).setKr(0.25)
+                .setBlurRadius(0.25).setBlurGlassRays(64);
+        Material greenMetal  = new Material().setKd(new Double3(0.1, 0.6, 0.1)).setKa(new Double3(0.1, 0.6, 0.1)).setKs(0.8).setShininess(300).setKr(0.25)
+                .setBlurRadius(0.25).setBlurGlassRays(64);
+        Material blueMetal   = new Material().setKd(new Double3(0.1, 0.1, 0.6)).setKa(new Double3(0.1, 0.1, 0.6)).setKs(0.8).setShininess(300).setKr(0.25)
+                .setBlurRadius(0.25).setBlurGlassRays(64);
+        Material yellowMetal = new Material().setKd(new Double3(0.6, 0.6, 0.1)).setKa(new Double3(0.6, 0.6, 0.1)).setKs(0.8).setShininess(300).setKr(0.25)
+                .setBlurRadius(0.25).setBlurGlassRays(64);
 
-        // --- Glass Materials (Moderate transparency and reflection) ---
-        Material clearGlass = new Material().setKd(0.0).setKs(0.8).setShininess(120).setKt(new Double3(0.85, 0.85, 0.9)).setKr(0.15);
-        Material redGlass   = new Material().setKd(0.0).setKs(0.8).setShininess(120).setKt(new Double3(0.85, 0.4, 0.4)).setKr(0.15);
-        Material goldGlass  = new Material().setKd(0.0).setKs(0.8).setShininess(120).setKt(new Double3(0.85, 0.8, 0.3)).setKr(0.15);
+        // --- Glass Materials (Frosted / Diffuse Glass) ---
+        // רדיוס של 0.15 יפזר את הקרניים הנשברות (kT) וייצור אפקט של זכוכית חלבית / התזת חול.
+        Material clearGlass = new Material().setKd(0.0).setKs(0.8).setShininess(120).setKt(new Double3(0.85, 0.85, 0.9)).setKr(0.15)
+                .setBlurRadius(0.15).setBlurGlassRays(64);
+        Material redGlass   = new Material().setKd(0.0).setKs(0.8).setShininess(120).setKt(new Double3(0.85, 0.4, 0.4)).setKr(0.15)
+                .setBlurRadius(0.15).setBlurGlassRays(64);
+        Material goldGlass  = new Material().setKd(0.0).setKs(0.8).setShininess(120).setKt(new Double3(0.85, 0.8, 0.3)).setKr(0.15)
+                .setBlurRadius(0.15).setBlurGlassRays(64);
 
         // --- Room Materials ---
-        Material floorMat     = new Material().setKd(0.5).setKs(0.4).setShininess(80).setKr(0.3);
+        // תוספת בונוס קטנה: הוספתי לרצפה טשטוש עדין מאוד (0.05). זה יהפוך אותה למראה של אבן מלוטשת במקום מראת קריסטל.
+        Material floorMat     = new Material().setKd(0.5).setKs(0.4).setShininess(80).setKr(0.3)
+                .setBlurRadius(0.05).setBlurGlassRays(36);
         Material matteWallMat = new Material().setKd(0.8).setKs(0.0).setShininess(0).setKr(0.0);
 
         // --- Proportions ---
@@ -354,12 +365,12 @@ class TransparencyReflectionTests {
                 .setDirection(vTo, vUp)
                 .setVpSize(150, 150).setVpDistance(140)
                 .setResolution(1000, 1000)
-                .setAntiAliasing(9, new Jittered())
+                //.setAntiAliasing(9, new Jittered())
                 .setMultithreading(-2)
                 .setDebugPrint(0.1)
                 .build()
                 .renderImage()
-                .writeToImage("classic_glass_cube_v10");
+                .writeToImage("classic_glass_cube_v10_glossy");
     }
 
     /**

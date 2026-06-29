@@ -4,7 +4,7 @@ package primitives;
  * PDS (Passive Data Structure) class representing the material of a geometry.
  * Contains attenuation factors for different light interactions.
  */
-public class Material {
+public class   Material {
 
     /**
      * Ambient light attenuation factor.
@@ -27,6 +27,9 @@ public class Material {
 
     /** Reflection attenuation factor */
     public Double3 kR = Double3.ZERO;
+
+    public double blurRadius = 0.0;
+    public int blurGlassRays = 1;
 
 
     /**
@@ -142,6 +145,16 @@ public class Material {
      */
     public Material setKr(double kR) {
         this.kR = new Double3(kR);
+        return this;
+    }
+
+    public Material setBlurRadius(double blurRadius) {
+        this.blurRadius = blurRadius;
+        return this;
+    }
+
+    public Material setBlurGlassRays(int blurGlassRays) {
+        this.blurGlassRays = blurGlassRays;
         return this;
     }
 }

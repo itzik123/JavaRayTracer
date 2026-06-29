@@ -6,6 +6,9 @@ import lighting.*;
 import primitives.*;
 import scene.Scene;
 
+import static java.lang.System.load;
+import static scene.SceneXMLParser.parse;
+
 /**
  * Test class demonstrating the Anti-Aliasing (Super-sampling) improvement.
  */
@@ -84,7 +87,7 @@ public class AntiAliasingTest {
         long start2 = System.currentTimeMillis();
 
         // 1. הגדרת הפרמטרים ובניית המצלמה ושמירתה למשתנה
-        Camera camera = cameraBuilder.setAntiAliasing(81, new Jittered())
+        Camera camera = cameraBuilder.setAntiAliasing(9, new Jittered())
                 .setMultithreading(-2)
                 .setDebugPrint(0.1)
                 .build();
@@ -97,5 +100,23 @@ public class AntiAliasingTest {
 
         long time2 = System.currentTimeMillis() - start2;
         System.out.println("Render time WITH Anti-Aliasing (9x9 Jittered): " + time2 / 1000.0 + " seconds");
+    }
+
+    @Test
+    void testCrystalGallerySideView() throws Exception {
+        Camera.getBuilder()
+                // שים לב לעדכון הנתיב + קריאה מפורשת למחלקה (למקרה שאין Import סטטי)
+                .setRayTracer(scene.SceneXMLParser.parse("stage8CrystalGallery.xml"), RayTracerType.SIMPLE)
+                .setLocation(new Point(750, 150, 300))
+                .setDirection(new Point(0, -100, -280), Vector.AXIS_Y)
+                .rotate(20)
+                .setVpSize(620, 620).setVpDistance(1000)
+                .setResolution(1000, 1000)
+                .setAntiAliasing(9, new Jittered())
+                .setMultithreading(-2) // מפעיל את כל הליבות של המעבד שלך
+                .setDebugPrint(0.1)    // מדפיס אחוזי התקדמות כל 10%
+                .build()
+                .renderImage()
+                .writeToImage("xml_crystalGallery_sideView_glossy_diffuse");
     }
 }

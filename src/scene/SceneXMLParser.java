@@ -3,6 +3,13 @@ package scene;
 import geometries.api.Geometry;
 import geometries.impl.Sphere;
 import geometries.impl.Triangle;
+import geometries.impl.Plane;
+import geometries.impl.Tube;
+import geometries.impl.Cylinder;
+import geometries.impl.Polygon;
+import primitives.Ray;
+import java.util.ArrayList;
+import java.util.List;
 import lighting.AmbientLight;
 import lighting.DirectionalLight;
 import lighting.PointLight;
@@ -111,11 +118,70 @@ public class SceneXMLParser {
             scene.geometries.add(triangle);
         }
 
+        // --- Planes ---
+        NodeList planeNodes = root.getElementsByTagName("plane");
+        for (int i = 0; i < planeNodes.getLength(); i++) {
+            Element el = (Element) planeNodes.item(i);
+            Plane plane = new Plane(
+                    parsePoint(el.getAttribute("point")),
+                    parseVector(el.getAttribute("normal")));
+            applyGeometryAttributes(plane, el);
+            scene.geometries.add(plane);
+        }
+
+        // --- Tubes ---
+        NodeList tubeNodes = root.getElementsByTagName("tube");
+        for (int i = 0; i < tubeNodes.getLength(); i++) {
+            Element el = (Element) tubeNodes.item(i);
+            Ray axisRay = new Ray(
+                    parsePoint(el.getAttribute("axis-origin")),
+                    parseVector(el.getAttribute("axis-dir")));
+
+            Tube tube = new Tube(Double.parseDouble(el.getAttribute("radius")), axisRay);
+
+            applyGeometryAttributes(tube, el);
+            scene.geometries.add(tube);
+        }
+
+        // --- Cylinders ---
+        NodeList cylinderNodes = root.getElementsByTagName("cylinder");
+        for (int i = 0; i < cylinderNodes.getLength(); i++) {
+            Element el = (Element) cylinderNodes.item(i);
+            Ray axisRay = new Ray(
+                    parsePoint(el.getAttribute("axis-origin")),
+                    parseVector(el.getAttribute("axis-dir")));
+
+            Cylinder cylinder = new Cylinder(
+                    Double.parseDouble(el.getAttribute("radius")),
+                    axisRay,
+                    Double.parseDouble(el.getAttribute("height")));
+
+            applyGeometryAttributes(cylinder, el);
+            scene.geometries.add(cylinder);
+        }
+
+        // --- Polygons ---
+        NodeList polygonNodes = root.getElementsByTagName("polygon");
+        for (int i = 0; i < polygonNodes.getLength(); i++) {
+            Element el = (Element) polygonNodes.item(i);
+
+            List<Point> vertices = new ArrayList<>();
+            int pIndex = 0;
+            while (el.hasAttribute("p" + pIndex)) {
+                vertices.add(parsePoint(el.getAttribute("p" + pIndex)));
+                pIndex++;
+            }
+
+            Polygon polygon = new Polygon(vertices.toArray(new Point[0]));
+            applyGeometryAttributes(polygon, el);
+            scene.geometries.add(polygon);
+        }
+
         return scene;
     }
 
     /**
-     * Applies common geometry attributes like emission and material (kA, kD, kS, nShininess).
+     * Applies common geometry attributes like emission and material (kA, kD, kS, nShininess, blurRadius, blurGlassRays).
      */
     private static void applyGeometryAttributes(Geometry geom, Element el) {
         if (el.hasAttribute("emission")) {
@@ -149,6 +215,17 @@ public class SceneXMLParser {
             material.setKr(parseDouble3(el.getAttribute("kR")));
             hasMaterial = true;
         }
+
+        // --- התוספת החדשה למיני-פרויקט 1: קריאת נתוני טשטוש ---
+        if (el.hasAttribute("blurRadius")) {
+            material.setBlurRadius(Double.parseDouble(el.getAttribute("blurRadius")));
+            hasMaterial = true;
+        }
+        if (el.hasAttribute("blurGlassRays")) {
+            material.setBlurGlassRays(Integer.parseInt(el.getAttribute("blurGlassRays")));
+            hasMaterial = true;
+        }
+
         if (hasMaterial) {
             geom.setMaterial(material);
         }

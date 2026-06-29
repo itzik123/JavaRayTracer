@@ -5,6 +5,8 @@ import lighting.LightSource;
 import primitives.*;
 import scene.Scene;
 
+import java.util.List;
+
 import static primitives.Util.alignZero;
 import static primitives.Util.isZero;
 
@@ -147,16 +149,48 @@ class SimpleRayTracer extends RayTracerBase {
         Color color = Color.BLACK;
         Material material = intersection.material;
 
+        // --- התיקון הקריטי למניעת "התפוצצות עץ הקרניים" ---
+        // נייצר אלומה גדולה רק בפגיעה הראשונה (כשהרקורסיה מתחילה).
+        // בכל פגיעה משנית, נסתפק בקרן אחת כדי למנוע גידול מעריכי של זמן הריצה.
+        int reflectionRaysCount = (level == MAX_CALC_COLOR_LEVEL) ? material.blurGlassRays : 1;
+        int refractionRaysCount = (level == MAX_CALC_COLOR_LEVEL) ? material.blurGlassRays : 1;
+
+        // --- 1. אפקט ההשתקפות (Reflection / Glossy Surfaces) ---
         Double3 kR = material.kR;
         if (!kR.equals(Double3.ZERO)) {
             Ray reflectionRay = constructReflectionRay(intersection);
-            color = color.add(calcGlobalEffect(reflectionRay, level, k, kR));
+
+            List<Ray> reflectionRaysBeam = constructRayBeam(
+                    reflectionRay,
+                    intersection.normal,
+                    material.blurRadius,
+                    reflectionRaysCount // שימוש במשתנה המאובטח שלנו
+            );
+
+            Color tempColor = Color.BLACK;
+            for (Ray ray : reflectionRaysBeam) {
+                tempColor = tempColor.add(calcGlobalEffect(ray, level, k, kR));
+            }
+            color = color.add(tempColor.reduce(reflectionRaysBeam.size()));
         }
 
+        // --- 2. אפקט השקיפות (Refraction / Diffused Glass) ---
         Double3 kT = material.kT;
         if (!kT.equals(Double3.ZERO)) {
-            Ray refractionRay = constructRefractionRay(intersection);
-            color = color.add(calcGlobalEffect(refractionRay, level, k, kT));
+            Ray refractedRay = constructRefractionRay(intersection);
+
+            List<Ray> refractedRaysBeam = constructRayBeam(
+                    refractedRay,
+                    intersection.normal,
+                    material.blurRadius,
+                    refractionRaysCount // שימוש במשתנה המאובטח שלנו
+            );
+
+            Color tempColor = Color.BLACK;
+            for (Ray ray : refractedRaysBeam) {
+                tempColor = tempColor.add(calcGlobalEffect(ray, level, k, kT));
+            }
+            color = color.add(tempColor.reduce(refractedRaysBeam.size()));
         }
 
         return color;
@@ -184,7 +218,7 @@ class SimpleRayTracer extends RayTracerBase {
      * @return the local color contribution
      */
     private Color calcLocalEffects(Intersection intersection, Double3 k) {
-        Color color = intersection.geometry.getEmission();
+        Color color = intersection.geometry.getEmission(intersection.point);
         for (LightSource lightSource : _scene.lights) {
             if (preprocessLightSource(intersection, lightSource)) {
 
@@ -224,5 +258,73 @@ class SimpleRayTracer extends RayTracerBase {
         if (minusVR <= 0) return Double3.ZERO;
 
         return intersection.material.kS.scale(Math.pow(minusVR, intersection.material.nShininess));
+    }
+
+    /**
+     * Constructs a beam of rays around a center ideal ray for glossy/diffused effects.
+     * @param centerRay The ideal reflected or refracted ray
+     * @param n The normal at the intersection point
+     * @param radius The blur radius
+     * @param numOfRays Number of rays to generate in the beam
+     * @return A list of scattered rays
+     */
+    private List<Ray> constructRayBeam(Ray centerRay, Vector n, double radius, int numOfRays) {
+        if (numOfRays <= 1 || Util.isZero(radius)) {
+            return List.of(centerRay); // זכוכית שקופה לחלוטין, אין צורך באלומה
+        }
+
+        List<Ray> beam = new java.util.ArrayList<>(numOfRays);
+        beam.add(centerRay);
+
+        // שימוש נקי ב-Getters של קרן (נא ודא ששמות המתודות origin ו-direction תואמים למימוש שלך)
+        Point p0 = centerRay.origin();
+        Vector dir = centerRay.direction();
+
+        // מציאת נקודת המרכז של מעגל הפיזור (במרחק 1 מראשית הקרן)
+        // שימוש בפעולת add הקיימת במחלקת Point כדי למנוע שבירת כימוס
+        Point centerPoint = p0.add(dir);
+
+        // חישוב שני וקטורים מאונכים לכיוון הקרן
+        Vector vX;
+        try {
+            // במקום לפנות ל-X ישירות (שבירת כימוס), נבדוק את ההיטל (Dot Product) על ציר ה-X
+            // אם המכפלה הסקלרית קרובה ל-1, הקרן מקבילה לציר ה-X
+            if (Math.abs(dir.dotProduct(Vector.AXIS_X)) > 0.9) {
+                vX = dir.crossProduct(Vector.AXIS_Y).normalize();
+            } else {
+                vX = dir.crossProduct(Vector.AXIS_X).normalize();
+            }
+        } catch (IllegalArgumentException e) {
+            vX = dir.crossProduct(Vector.AXIS_Y).normalize();
+        }
+        Vector vY = dir.crossProduct(vX).normalize();
+
+        // 2. הגרלת נקודות על עיגול המטרה
+        java.util.Random rnd = new java.util.Random();
+        double nv = n.dotProduct(dir); // בדיקת הצד שממנו יצאה הקרן המקורית
+
+        for (int i = 1; i < numOfRays; i++) {
+            // הגרלת רדיוס וזווית בתוך העיגול
+            double r = radius * Math.sqrt(rnd.nextDouble());
+            double theta = 2 * Math.PI * rnd.nextDouble();
+
+            double x = r * Math.cos(theta);
+            double y = r * Math.sin(theta);
+
+            // תזוזה על המישור - שימוש במתודות add ו-scale הרשמיות
+            Point p = centerPoint;
+            if (!Util.isZero(x)) p = p.add(vX.scale(x));
+            if (!Util.isZero(y)) p = p.add(vY.scale(y));
+
+            // יצירת וקטור כיוון חדש בעזרת מתודת subtract של מחלקת Point
+            Vector rayDir = p.subtract(p0);
+
+            // --- סינון קריטי! ---
+            // מוודאים שהקרן החדשה לא "נבלעה" פנימה (שומרים על אותו צד של המשטח)
+            if (n.dotProduct(rayDir) * nv > 0) {
+                beam.add(new Ray(p0, rayDir));
+            }
+        }
+        return beam;
     }
 }

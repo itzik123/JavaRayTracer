@@ -244,6 +244,7 @@ public class Camera implements Cloneable {
         private Vector _vTo = null;
         private Point _target = null;
         private Vector _vUp = Vector.AXIS_Y;
+        private double _rotationAngle = 0;
 
         public Builder setLocation(Point location) {
             _camera._p0 = location;
@@ -303,6 +304,16 @@ public class Camera implements Cloneable {
          */
         public Builder addPostProcessFilter(PostProcessFilter filter) {
             _camera._postProcessingEngine.addFilter(filter);
+            return this;
+        }
+
+        /**
+         * Rotates the camera around its viewing direction (vTo axis).
+         * @param angle Rotation angle in degrees (clockwise)
+         * @return The Builder itself
+         */
+        public Builder rotate(double angle) {
+            this._rotationAngle = angle;
             return this;
         }
 
@@ -376,6 +387,31 @@ public class Camera implements Cloneable {
             }
 
             _camera._vUp = _camera._vRight.crossProduct(_camera._vTo);
+
+            _camera._vUp = _camera._vRight.crossProduct(_camera._vTo); // זו השורה שכבר קיימת אצלך
+
+            if (!isZero(_rotationAngle)) {
+                double radians = Math.toRadians(_rotationAngle);
+                double cos = Math.cos(radians);
+                double sin = Math.sin(radians);
+
+                Vector oldUp = _camera._vUp;
+                Vector oldRight = _camera._vRight;
+
+                Vector newUp = null;
+                if (isZero(cos)) {
+                    newUp = oldRight.scale(sin);
+                } else if (isZero(sin)) {
+                    newUp = oldUp.scale(cos);
+                } else {
+                    newUp = oldUp.scale(cos).add(oldRight.scale(sin));
+                }
+
+                _camera._vUp = newUp.normalize();
+
+                // חישוב וקטור ימינה מחדש כדי לשמור על מערכת צירים אורתוגונלית
+                _camera._vRight = _camera._vTo.crossProduct(_camera._vUp).normalize();
+            }
         }
 
         private void checkViewPlane() {
