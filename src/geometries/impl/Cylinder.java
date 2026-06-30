@@ -131,6 +131,24 @@ public class Cylinder extends Tube {
     }
 
     @Override
+    protected primitives.AABB createBoundingBox() {
+        Point p0 = _axis.origin();
+        Point p1 = _axis.getPoint(_height);
+        double r = _radius;
+
+        // מציאת ערכי המינימום והמקסימום בין שתי נקודות המרכז, והרחבה ברדיוס
+        double minX = Math.min(p0.getX(), p1.getX()) - r;
+        double minY = Math.min(p0.getY(), p1.getY()) - r;
+        double minZ = Math.min(p0.getZ(), p1.getZ()) - r;
+
+        double maxX = Math.max(p0.getX(), p1.getX()) + r;
+        double maxY = Math.max(p0.getY(), p1.getY()) + r;
+        double maxZ = Math.max(p0.getZ(), p1.getZ()) + r;
+
+        return new primitives.AABB(new Point(minX, minY, minZ), new Point(maxX, maxY, maxZ));
+    }
+
+    @Override
     public String toString() {
         return "Cylinder: height " + _height + " " + super.toString();
     }

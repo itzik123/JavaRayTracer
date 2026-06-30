@@ -71,6 +71,12 @@ public class Plane extends Geometry {
     }
 
     @Override
+    protected primitives.AABB createBoundingBox() {
+        // גופים אינסופיים לא תוחמים בקופסה סופית. יטופלו בנפרד מחוץ לרשת הווקסלים.
+        return null;
+    }
+
+    @Override
     public String toString() {
         return "Plane: point: " + _point.toString() + " normal: " + _normal.toString();
     }

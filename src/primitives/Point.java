@@ -37,6 +37,26 @@ public class Point {
     }
 
     /**
+     * @return The X coordinate of the point
+     */
+    public double getX() {
+        return _xyz._d1(); // או _d1() בהתאם למימוש שלך ב-Double3
+    }
+
+    /**
+     * @return The Y coordinate of the point
+     */
+    public double getY() {
+        return _xyz._d2();
+    }
+
+    /**
+     * @return The Z coordinate of the point
+     */
+    public double getZ() {
+        return _xyz._d3();
+    }
+    /**
      * Subtracts a point from this point to create a vector.
      * @param other the point to subtract
      * @return a new vector from the other point to this point

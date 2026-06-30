@@ -1,10 +1,7 @@
 package geometries.api;
 
 import lighting.LightSource;
-import primitives.Material;
-import primitives.Point;
-import primitives.Ray;
-import primitives.Vector;
+import primitives.*;
 
 import java.util.List;
 
@@ -13,6 +10,32 @@ import java.util.List;
  * @author itzik123
  */
 public abstract class Intersectable {
+    /** The bounding box of the geometry */
+    protected AABB _box = null;
+
+    /**
+     * Gets the bounding box.
+     * @return the AABB object
+     */
+    public AABB getBoundingBox() {
+        return _box;
+    }
+
+    /**
+     * Initiates the creation of the bounding box.
+     * Implementing the NVI pattern.
+     */
+    public void setBoundingBox() {
+        if (_box == null) {
+            _box = createBoundingBox();
+        }
+    }
+
+    /**
+     * Abstract method for calculating the exact boundaries of the specific geometry.
+     * @return the calculated AABB
+     */
+    protected abstract AABB createBoundingBox();
     /**
      * Finds all intersections of a ray with the geometries.
      * @param ray the ray to intersect with

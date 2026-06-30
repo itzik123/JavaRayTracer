@@ -110,7 +110,28 @@ public class Polygon extends Geometry {
            return null;
        }
     }
+    @Override
+    protected primitives.AABB createBoundingBox() {
+        double minX = Double.POSITIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double minZ = Double.POSITIVE_INFINITY;
 
+        double maxX = Double.NEGATIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        double maxZ = Double.NEGATIVE_INFINITY;
+
+        for (Point p : _vertices) {
+            if (p.getX() < minX) minX = p.getX();
+            if (p.getY() < minY) minY = p.getY();
+            if (p.getZ() < minZ) minZ = p.getZ();
+
+            if (p.getX() > maxX) maxX = p.getX();
+            if (p.getY() > maxY) maxY = p.getY();
+            if (p.getZ() > maxZ) maxZ = p.getZ();
+        }
+
+        return new primitives.AABB(new Point(minX, minY, minZ), new Point(maxX, maxY, maxZ));
+    }
    @Override
    public Vector getNormal(Point point) { return _plane.getNormal(point); }
 }

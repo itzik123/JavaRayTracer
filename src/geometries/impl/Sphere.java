@@ -70,6 +70,16 @@ public class Sphere extends RadialGeometry {
         }
         return null;
     }
+    @Override
+    protected primitives.AABB createBoundingBox() {
+        double r = _radius;
+        Point center = _center;
+
+        Point min = new Point(center.getX() - r, center.getY() - r, center.getZ() - r);
+        Point max = new Point(center.getX() + r, center.getY() + r, center.getZ() + r);
+
+        return new primitives.AABB(min, max);
+    }
 
     @Override
     public String toString() {

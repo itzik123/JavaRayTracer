@@ -109,6 +109,12 @@ public class Tube extends RadialGeometry {
     }
 
     @Override
+    protected primitives.AABB createBoundingBox() {
+        // גופים אינסופיים לא תוחמים בקופסה סופית. יטופלו בנפרד מחוץ לרשת הווקסלים.
+        return null;
+    }
+
+    @Override
     public int hashCode() {
         return Objects.hash(super._radius, _axis);
     }
