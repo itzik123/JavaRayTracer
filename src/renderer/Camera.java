@@ -388,8 +388,6 @@ public class Camera implements Cloneable {
 
             _camera._vUp = _camera._vRight.crossProduct(_camera._vTo);
 
-            _camera._vUp = _camera._vRight.crossProduct(_camera._vTo); // זו השורה שכבר קיימת אצלך
-
             if (!isZero(_rotationAngle)) {
                 double radians = Math.toRadians(_rotationAngle);
                 double cos = Math.cos(radians);

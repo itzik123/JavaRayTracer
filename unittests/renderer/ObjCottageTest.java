@@ -205,7 +205,7 @@ public class ObjCottageTest {
                 .setLocation(cameraLoc)
                 .setDirection(target.subtract(cameraLoc), Vector.AXIS_Y)
                 .setVpSize(10, 10).setVpDistance(10)
-                .setResolution(600, 600)
+                .setResolution(30, 30)
                 .setMultithreading(-2)
                 .setDebugPrint(0.1)
                 .build()
@@ -216,34 +216,59 @@ public class ObjCottageTest {
     }
 
     @Test
-    public void testLaptopScreenDebug() {
-        Scene scene = new Scene("Laptop Debug")
-                .setBackground(new Color(10, 10, 15))
-                .setAmbientLight(new AmbientLight(new Color(255, 255, 255).reduce(10))); // חושך כמעט מוחלט
+    public void testLaptopOnGlassTableFinal() {
+        Scene scene = new Scene("Laptop on Glass Desk")
+                .setBackground(new Color(10, 15, 25)) // רקע סטודיו כהה ואלגנטי
+                .setAmbientLight(new AmbientLight(new Color(255, 255, 255).reduce(10)));
 
-        // השארתי רק תאורה קטנה וחלשה מאוד מלפנים
-        scene.lights.add(new PointLight(new Color(50, 50, 50), new Point(0, 5, 5))
+        // תאורת שמש מוחלשת שלא שורפת את המסך
+        scene.lights.add(new DirectionalLight(new Color(255, 250, 240).reduce(5), new Vector(1, -1, 1)));
+
+        // ספוט לייט עדין כדי לתת השתקפות על השולחן
+        scene.lights.add(new PointLight(new Color(100, 100, 150), new Point(0, 10, 2))
                 .setKl(0.01).setKq(0.001));
 
         System.out.println("Parsing OBJ file...");
         scene.ObjParser parser = new scene.ObjParser();
         scene.geometries.add(parser.parse("models/Laptop_High-Polay_HP_BI_2_obj.obj"));
 
-        Point target = new Point(0, 1.58, -0.67);
-        Point cameraLoc = new Point(8, 7, 8);
+        // --- חומר זכוכית חלבית לשולחן ---
+        Material glassTableMat = new Material()
+                .setKd(0.05).setKs(0.8).setShininess(100)
+                .setKt(0.7)
+                .setKr(0.2)
+                .setBlurRadius(0.15)
+                .setBlurGlassRays(12);
 
-        System.out.println("Rendering debug image...");
+        // --- שולחן זכוכית (פוליגון מלבני ומיושר במקום מישור אינסופי) ---
+        // המחשב יושב סביב X=0, Z=-0.67. בנינו שולחן ברוחב 14 ובעומק 10.
+        scene.geometries.add(new geometries.impl.Polygon(
+                new Point(-7, 0.01, 4.33),
+                new Point(7, 0.01, 4.33),
+                new Point(7, 0.01, -5.67),
+                new Point(-7, 0.01, -5.67))
+                .setEmission(new Color(5, 10, 15))
+                .setMaterial(glassTableMat));
+
+        // --- הנדסת המצלמה ---
+        Point target = new Point(0, 1.58, -0.67);
+
+        // וקטור הכיוון המקורי כפול 0.65 כדי להתקרב בדיוק על אותו ציר!
+        Vector angleOffset = new Vector(8, 5.42, 8.67).scale(0.8);
+        Point cameraLoc = target.add(angleOffset);
+
+        System.out.println("Rendering final masterpiece...");
         Camera.getBuilder()
                 .setRayTracer(scene, RayTracerType.SIMPLE)
                 .setLocation(cameraLoc)
                 .setDirection(target.subtract(cameraLoc), Vector.AXIS_Y)
-                .setVpSize(10, 10).setVpDistance(10)
-                .setResolution(50, 50) // רזולוציה לבדיקה מהירה
+                .setVpSize(8, 8).setVpDistance(10)
+                .setResolution(600, 600)
                 .setMultithreading(-2)
                 .setDebugPrint(0.1)
                 .build()
                 .renderImage()
-                .writeToImage("Laptop_Screen_Debug");
+                .writeToImage("Laptop_Final_Masterpiece");
 
         System.out.println("Done!");
     }

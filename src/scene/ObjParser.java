@@ -37,13 +37,14 @@ public class ObjParser {
         List<Point> vertices = new ArrayList<>();
         vertices.add(new Point(0, 0, 0));
 
+        // רשימה סודית לשמירת קואורדינטות המספרים הגולמיים (כדי לא לשבור את הכימוס של Point)
+        List<double[]> rawVertices = new ArrayList<>();
+        rawVertices.add(new double[]{0, 0, 0});
+
         List<UV> uvs = new ArrayList<>();
         uvs.add(new UV(0, 0));
 
         Map<String, ParsedMaterial> materialsMap = new HashMap<>();
-
-        // מפת דיאגנוסטיקה למעקב אחרי כמות המשולשים לכל חומר
-        Map<String, Integer> materialTriangleCount = new HashMap<>();
         String currentMaterialName = "None";
 
         Material activeMaterial = _defaultMaterial;
@@ -77,11 +78,10 @@ public class ObjParser {
                     double y = Double.parseDouble(parts[2]);
                     double z = Double.parseDouble(parts[3]);
 
-                    Point p = new Point(x, y, z);
-                    if (offset != null) {
-                        p = p.add(offset);
-                    }
-                    vertices.add(p);
+
+
+                    rawVertices.add(new double[]{x, y, z});
+                    vertices.add(new Point(x, y, z));
                 }
                 else if (parts[0].equals("vt")) {
                     uvs.add(new UV(Double.parseDouble(parts[1]), Double.parseDouble(parts[2])));
@@ -93,7 +93,6 @@ public class ObjParser {
                     for (int i = 1; i < parts.length; i++) {
                         String[] subParts = parts[i].split("/");
                         vIndices.add(Integer.parseInt(subParts[0]));
-
                         if (subParts.length > 1 && !subParts[1].isEmpty()) {
                             vtIndices.add(Integer.parseInt(subParts[1]));
                         }
@@ -101,12 +100,26 @@ public class ObjParser {
 
                     for (int i = 1; i < vIndices.size() - 1; i++) {
                         try {
-                            // מעקב דיאגנוסטיקה אחרי החומר הנוכחי
-                            materialTriangleCount.put(currentMaterialName, materialTriangleCount.getOrDefault(currentMaterialName, 0) + 1);
-
                             Point p1 = vertices.get(vIndices.get(0));
                             Point p2 = vertices.get(vIndices.get(i));
                             Point p3 = vertices.get(vIndices.get(i + 1));
+
+                            // --- תיקון הפריסה הדינמי (Planar Mapping) למסך ---
+                            if (currentMaterialName.equals("Display") && activeTexture != null) {
+                                double[] c1 = rawVertices.get(vIndices.get(0));
+                                double[] c2 = rawVertices.get(vIndices.get(i));
+                                double[] c3 = rawVertices.get(vIndices.get(i + 1));
+
+                                // חישוב מתמטי מדויק לפי הקופסה התוחמת שחישבנו (רוחב 5, גובה 1.6)
+                                UV customUv1 = new UV((c1[0] + 2.5) / 5.0, (3.14 - c1[1]) / 1.6);
+                                UV customUv2 = new UV((c2[0] + 2.5) / 5.0, (3.14 - c2[1]) / 1.6);
+                                UV customUv3 = new UV((c3[0] + 2.5) / 5.0, (3.14 - c3[1]) / 1.6);
+
+                                TexturedTriangle tt = new TexturedTriangle(p1, p2, p3, customUv1, customUv2, customUv3, activeTexture);
+                                tt.setMaterial(activeMaterial);
+                                modelGeometries.add(tt);
+                                continue;
+                            }
 
                             if (activeTexture != null && vtIndices.size() >= 3) {
                                 UV uv1 = uvs.get(vtIndices.get(0));
@@ -123,22 +136,13 @@ public class ObjParser {
                                 modelGeometries.add(t);
                             }
                         } catch (IllegalArgumentException e) {
-                            // מתעלם בשקט ממשולשים פגומים
+                            // מתעלם ממשולשים פגומים
                         }
                     }
                 }
             }
-
-            // הדפסת דוח החומרים המלא בסוף הקריאה
-            System.out.println("\n=== DIAGNOSTIC REPORT FOR: " + new File(filePath).getName() + " ===");
-            for (Map.Entry<String, Integer> entry : materialTriangleCount.entrySet()) {
-                System.out.println("Material [" + entry.getKey() + "] -> Applied to " + entry.getValue() + " triangles.");
-            }
-            System.out.println("===================================================\n");
-
         } catch (IOException e) {
             System.err.println("Failed to parse OBJ file: " + filePath);
-            e.printStackTrace();
         }
 
         return modelGeometries;
