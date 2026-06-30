@@ -317,7 +317,7 @@ class CylinderTest {
     void testBoundingBox() {
         // ============ Equivalence Partitions Tests ==============
         // TC01: Correct AABB for a cylinder
-        CYLINDER.setBoundingBox();
+        CYLINDER_AABB.setBoundingBox();
         assertEquals(EXPECTED_CYLINDER_AABB, CYLINDER_AABB.getBoundingBox(), "ERROR: Wrong AABB for Cylinder");
     }
 }

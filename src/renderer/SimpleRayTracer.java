@@ -33,7 +33,7 @@ class SimpleRayTracer extends RayTracerBase {
      * @param ray the ray to check
      * @return the closest intersection, or null if no intersections are found
      */
-    private Intersection findClosestIntersection(Ray ray) {
+    protected Intersection findClosestIntersection(Ray ray) {
         var intersections = _scene.geometries.calcIntersections(ray);
         return intersections == null ? null : ray.findClosestIntersection(intersections);
     }
@@ -43,7 +43,7 @@ class SimpleRayTracer extends RayTracerBase {
      * @param intersection the intersection point containing the geometric data and light source
      * @return true if the point is unshaded, false if it's in shadow
      */
-    private boolean unshaded(Intersection intersection) {
+    protected boolean unshaded(Intersection intersection) {
         Vector lightDirection = intersection.light.getL(intersection.point).scale(-1);
 
         Ray lightRay = new Ray(intersection.point, lightDirection, intersection.normal);
@@ -68,7 +68,7 @@ class SimpleRayTracer extends RayTracerBase {
      * @param intersection the intersection point containing the geometric data and light source
      * @return the accumulated transparency attenuation factor (Double3)
      */
-    private Double3 transparency(Intersection intersection) {
+    protected Double3 transparency(Intersection intersection) {
         Vector lightDirection = intersection.light.getL(intersection.point).scale(-1);
         Ray lightRay = new Ray(intersection.point, lightDirection, intersection.normal);
 

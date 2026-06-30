@@ -14,5 +14,7 @@ public enum RayTracerType {
    /**
     * A ray tracer that uses a regular grid acceleration structure.
     */
-   GRID
+   GRID,
+
+    REGULAR_GRID
 }

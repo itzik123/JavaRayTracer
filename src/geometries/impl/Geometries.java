@@ -94,4 +94,20 @@ public class Geometries extends Intersectable {
         }
         return result;
     }
+
+    /**
+     * Flattens the geometries composite into a single list of geometries.
+     * @return a flat list of all Intersectable geometries
+     */
+    public List<Intersectable> flatten() {
+        List<Intersectable> flatList = new ArrayList<>();
+        for (Intersectable item : geometries) {
+            if (item instanceof Geometries comp) {
+                flatList.addAll(comp.flatten()); // קריאה רקורסיבית
+            } else {
+                flatList.add(item);
+            }
+        }
+        return flatList;
+    }
 }

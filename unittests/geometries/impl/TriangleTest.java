@@ -190,7 +190,7 @@ class TriangleTest {
     void testBoundingBox() {
         // ============ Equivalence Partitions Tests ==============
         // TC01: Correct AABB for a simple triangle
-        TRIANGLE.setBoundingBox();
+        TRIANGLE_AABB.setBoundingBox();
         assertEquals(EXPECTED_TRIANGLE_AABB, TRIANGLE_AABB.getBoundingBox(), "ERROR: Wrong AABB for Triangle");
     }
 }

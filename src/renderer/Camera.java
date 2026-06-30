@@ -245,6 +245,12 @@ public class Camera implements Cloneable {
         private Point _target = null;
         private Vector _vUp = Vector.AXIS_Y;
         private double _rotationAngle = 0;
+        private int _gridResolution = 50; // ברירת מחדל
+
+        public Builder setGridResolution(int resolution) {
+            this._gridResolution = resolution;
+            return this;
+        }
 
         public Builder setLocation(Point location) {
             _camera._p0 = location;
@@ -288,6 +294,8 @@ public class Camera implements Cloneable {
         public Builder setRayTracer(Scene scene, RayTracerType type) {
             if (type == RayTracerType.SIMPLE) {
                 _camera._rayTracer = new SimpleRayTracer(scene);
+            } else if (type == RayTracerType.REGULAR_GRID) {
+                _camera._rayTracer = new RegularGridRayTracer(scene, _gridResolution);
             } else {
                 throw new IllegalArgumentException("Unsupported ray tracer type: " + type);
             }

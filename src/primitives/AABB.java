@@ -62,6 +62,41 @@ public class AABB {
         return true;
     }
 
+    /**
+     * Calculates the distance (t) from the ray origin to the intersection point with the AABB.
+     * @param ray the ray to check
+     * @return the t value of the intersection, or Double.NEGATIVE_INFINITY if it misses.
+     */
+    public double findIntersectionT(Ray ray) {
+        Point o = ray.origin();
+        Vector d = ray.direction();
+
+        double tMinX = (min.getX() - o.getX()) / d.getX();
+        double tMaxX = (max.getX() - o.getX()) / d.getX();
+        if (tMinX > tMaxX) { double temp = tMinX; tMinX = tMaxX; tMaxX = temp; }
+
+        double tMinY = (min.getY() - o.getY()) / d.getY();
+        double tMaxY = (max.getY() - o.getY()) / d.getY();
+        if (tMinY > tMaxY) { double temp = tMinY; tMinY = tMaxY; tMaxY = temp; }
+
+        if ((tMinX > tMaxY) || (tMinY > tMaxX)) return Double.NEGATIVE_INFINITY;
+
+        if (tMinY > tMinX) tMinX = tMinY;
+        if (tMaxY < tMaxX) tMaxX = tMaxY;
+
+        double tMinZ = (min.getZ() - o.getZ()) / d.getZ();
+        double tMaxZ = (max.getZ() - o.getZ()) / d.getZ();
+        if (tMinZ > tMaxZ) { double temp = tMinZ; tMinZ = tMaxZ; tMaxZ = temp; }
+
+        if ((tMinX > tMaxZ) || (tMinZ > tMaxX)) return Double.NEGATIVE_INFINITY;
+
+        if (tMinZ > tMinX) tMinX = tMinZ;
+        if (tMaxZ < tMaxX) tMaxX = tMaxZ;
+
+        if (tMaxX < 0) return Double.NEGATIVE_INFINITY; // הקופסה נמצאת מאחורי הקרן
+        return tMinX < 0 ? 0 : tMinX; // אם ראשית הקרן בתוך הקופסה, המרחק לכניסה הוא 0
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
