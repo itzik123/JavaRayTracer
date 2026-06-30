@@ -205,12 +205,45 @@ public class ObjCottageTest {
                 .setLocation(cameraLoc)
                 .setDirection(target.subtract(cameraLoc), Vector.AXIS_Y)
                 .setVpSize(10, 10).setVpDistance(10)
-                .setResolution(50, 50)
+                .setResolution(600, 600)
                 .setMultithreading(-2)
                 .setDebugPrint(0.1)
                 .build()
                 .renderImage()
                 .writeToImage("Laptop_On_Glass_Table");
+
+        System.out.println("Done!");
+    }
+
+    @Test
+    public void testLaptopScreenDebug() {
+        Scene scene = new Scene("Laptop Debug")
+                .setBackground(new Color(10, 10, 15))
+                .setAmbientLight(new AmbientLight(new Color(255, 255, 255).reduce(10))); // חושך כמעט מוחלט
+
+        // השארתי רק תאורה קטנה וחלשה מאוד מלפנים
+        scene.lights.add(new PointLight(new Color(50, 50, 50), new Point(0, 5, 5))
+                .setKl(0.01).setKq(0.001));
+
+        System.out.println("Parsing OBJ file...");
+        scene.ObjParser parser = new scene.ObjParser();
+        scene.geometries.add(parser.parse("models/Laptop_High-Polay_HP_BI_2_obj.obj"));
+
+        Point target = new Point(0, 1.58, -0.67);
+        Point cameraLoc = new Point(8, 7, 8);
+
+        System.out.println("Rendering debug image...");
+        Camera.getBuilder()
+                .setRayTracer(scene, RayTracerType.SIMPLE)
+                .setLocation(cameraLoc)
+                .setDirection(target.subtract(cameraLoc), Vector.AXIS_Y)
+                .setVpSize(10, 10).setVpDistance(10)
+                .setResolution(50, 50) // רזולוציה לבדיקה מהירה
+                .setMultithreading(-2)
+                .setDebugPrint(0.1)
+                .build()
+                .renderImage()
+                .writeToImage("Laptop_Screen_Debug");
 
         System.out.println("Done!");
     }

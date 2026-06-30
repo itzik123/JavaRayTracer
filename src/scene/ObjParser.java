@@ -42,12 +42,13 @@ public class ObjParser {
 
         Map<String, ParsedMaterial> materialsMap = new HashMap<>();
 
+        // מפת דיאגנוסטיקה למעקב אחרי כמות המשולשים לכל חומר
+        Map<String, Integer> materialTriangleCount = new HashMap<>();
+        String currentMaterialName = "None";
+
         Material activeMaterial = _defaultMaterial;
         Color activeEmission = _defaultEmission;
         Texture activeTexture = null;
-
-        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, minZ = Double.MAX_VALUE;
-        double maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
 
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
@@ -63,9 +64,9 @@ public class ObjParser {
                     materialsMap = MtlParser.parse(mtlPath);
                 }
                 else if (parts[0].equals("usemtl")) {
-                    String materialName = line.substring(7).trim();
-                    if (materialsMap.containsKey(materialName)) {
-                        ParsedMaterial pm = materialsMap.get(materialName);
+                    currentMaterialName = line.substring(7).trim();
+                    if (materialsMap.containsKey(currentMaterialName)) {
+                        ParsedMaterial pm = materialsMap.get(currentMaterialName);
                         activeEmission = pm.diffuseColor;
                         activeMaterial = pm.material;
                         activeTexture = pm.texture;
@@ -81,13 +82,6 @@ public class ObjParser {
                         p = p.add(offset);
                     }
                     vertices.add(p);
-
-                    if (x < minX) minX = x;
-                    if (y < minY) minY = y;
-                    if (z < minZ) minZ = z;
-                    if (x > maxX) maxX = x;
-                    if (y > maxY) maxY = y;
-                    if (z > maxZ) maxZ = z;
                 }
                 else if (parts[0].equals("vt")) {
                     uvs.add(new UV(Double.parseDouble(parts[1]), Double.parseDouble(parts[2])));
@@ -106,8 +100,10 @@ public class ObjParser {
                     }
 
                     for (int i = 1; i < vIndices.size() - 1; i++) {
-                        // --- מנגנון ההגנה מפני וקטור אפס (משולשים פגומים) ---
                         try {
+                            // מעקב דיאגנוסטיקה אחרי החומר הנוכחי
+                            materialTriangleCount.put(currentMaterialName, materialTriangleCount.getOrDefault(currentMaterialName, 0) + 1);
+
                             Point p1 = vertices.get(vIndices.get(0));
                             Point p2 = vertices.get(vIndices.get(i));
                             Point p3 = vertices.get(vIndices.get(i + 1));
@@ -127,15 +123,18 @@ public class ObjParser {
                                 modelGeometries.add(t);
                             }
                         } catch (IllegalArgumentException e) {
-                            // מתעלם בשקט וממשיך למשולש הבא במודל
+                            // מתעלם בשקט ממשולשים פגומים
                         }
                     }
                 }
             }
 
-            System.out.println("Parsed: " + new File(filePath).getName());
-            System.out.println("Min: X=" + minX + ", Y=" + minY + ", Z=" + minZ);
-            System.out.println("Max: X=" + maxX + ", Y=" + maxY + ", Z=" + maxZ + "\n");
+            // הדפסת דוח החומרים המלא בסוף הקריאה
+            System.out.println("\n=== DIAGNOSTIC REPORT FOR: " + new File(filePath).getName() + " ===");
+            for (Map.Entry<String, Integer> entry : materialTriangleCount.entrySet()) {
+                System.out.println("Material [" + entry.getKey() + "] -> Applied to " + entry.getValue() + " triangles.");
+            }
+            System.out.println("===================================================\n");
 
         } catch (IOException e) {
             System.err.println("Failed to parse OBJ file: " + filePath);

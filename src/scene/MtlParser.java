@@ -46,25 +46,21 @@ public class MtlParser {
                     String imageFileName = parts[1];
                     String fullPath = directoryPath + imageFileName;
 
-                    // --- מנגנון הגנה חכם לטקסטורות ---
-                    try {
-                        currentMaterial.texture = new Texture(fullPath);
-                    } catch (Exception e) {
-                        // במידה וטעינת הטקסטורה נכשלת (למשל סיומת לא נכונה או קובץ חסר)
-                        try {
-                            // מנסה להחליף סיומת מ-png ל-jpg או להפך
-                            if (imageFileName.toLowerCase().endsWith(".png")) {
-                                String altPath = fullPath.substring(0, fullPath.lastIndexOf('.')) + ".jpg";
-                                currentMaterial.texture = new Texture(altPath);
-                            } else if (imageFileName.toLowerCase().endsWith(".jpg")) {
-                                String altPath = fullPath.substring(0, fullPath.lastIndexOf('.')) + ".png";
-                                currentMaterial.texture = new Texture(altPath);
-                            } else {
-                                System.err.println("Warning: Missing texture file: " + fullPath + " - Rendering without it.");
-                            }
-                        } catch (Exception ex) {
-                            System.err.println("Warning: Missing texture file and fallbacks failed: " + fullPath + " - Rendering without it.");
+                    File imgFile = new File(fullPath);
+                    if (!imgFile.exists()) {
+                        if (imageFileName.toLowerCase().endsWith(".png")) {
+                            imgFile = new File(fullPath.substring(0, fullPath.lastIndexOf('.')) + ".jpg");
+                        } else if (imageFileName.toLowerCase().endsWith(".jpg")) {
+                            imgFile = new File(fullPath.substring(0, fullPath.lastIndexOf('.')) + ".png");
                         }
+                    }
+
+                    if (imgFile.exists()) {
+                        currentMaterial.texture = new Texture(imgFile.getAbsolutePath());
+                        // החיישן הראשון שלנו! ידווח אם התמונה נטענה בהצלחה לזיכרון
+                        System.out.println("✅ SUCCESS: Loaded texture [" + imgFile.getName() + "] for material [" + currentMaterial.name + "]");
+                    } else {
+                        System.err.println("❌ ERROR: Texture file not found: " + imageFileName);
                     }
                 }
             }
