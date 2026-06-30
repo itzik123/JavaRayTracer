@@ -6,6 +6,7 @@ import geometries.impl.Triangle;
 import primitives.Color;
 import primitives.Material;
 import primitives.Point;
+import primitives.Vector;
 import primitives.Texture;
 import primitives.UV;
 
@@ -27,20 +28,26 @@ public class ObjParser {
     public ObjParser setEmission(Color emission) { this._defaultEmission = emission; return this; }
 
     public Geometries parse(String filePath) {
+        return parse(filePath, null);
+    }
+
+    public Geometries parse(String filePath, Vector offset) {
         Geometries modelGeometries = new Geometries();
 
         List<Point> vertices = new ArrayList<>();
         vertices.add(new Point(0, 0, 0));
 
-        // --- רשימת ה-UV החדשה ---
         List<UV> uvs = new ArrayList<>();
-        uvs.add(new UV(0, 0)); // אינדקס 0 נשאר ריק (1-based index)
+        uvs.add(new UV(0, 0));
 
         Map<String, ParsedMaterial> materialsMap = new HashMap<>();
 
         Material activeMaterial = _defaultMaterial;
         Color activeEmission = _defaultEmission;
-        Texture activeTexture = null; // השדה החדש!
+        Texture activeTexture = null;
+
+        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, minZ = Double.MAX_VALUE;
+        double maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE, maxZ = -Double.MAX_VALUE;
 
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
@@ -51,26 +58,40 @@ public class ObjParser {
                 String[] parts = line.split("\\s+");
 
                 if (parts[0].equals("mtllib")) {
-                    String mtlPath = new File(filePath).getParent() + File.separator + parts[1];
+                    String mtlFileName = line.substring(7).trim();
+                    String mtlPath = new File(filePath).getParent() + File.separator + mtlFileName;
                     materialsMap = MtlParser.parse(mtlPath);
                 }
                 else if (parts[0].equals("usemtl")) {
-                    String materialName = parts[1];
+                    String materialName = line.substring(7).trim();
                     if (materialsMap.containsKey(materialName)) {
                         ParsedMaterial pm = materialsMap.get(materialName);
                         activeEmission = pm.diffuseColor;
                         activeMaterial = pm.material;
-                        activeTexture = pm.texture; // שולפים את הטקסטורה!
+                        activeTexture = pm.texture;
                     }
                 }
                 else if (parts[0].equals("v")) {
-                    vertices.add(new Point(Double.parseDouble(parts[1]), Double.parseDouble(parts[2]), Double.parseDouble(parts[3])));
+                    double x = Double.parseDouble(parts[1]);
+                    double y = Double.parseDouble(parts[2]);
+                    double z = Double.parseDouble(parts[3]);
+
+                    Point p = new Point(x, y, z);
+                    if (offset != null) {
+                        p = p.add(offset);
+                    }
+                    vertices.add(p);
+
+                    if (x < minX) minX = x;
+                    if (y < minY) minY = y;
+                    if (z < minZ) minZ = z;
+                    if (x > maxX) maxX = x;
+                    if (y > maxY) maxY = y;
+                    if (z > maxZ) maxZ = z;
                 }
-                // --- קריאת קואורדינטות UV ---
                 else if (parts[0].equals("vt")) {
                     uvs.add(new UV(Double.parseDouble(parts[1]), Double.parseDouble(parts[2])));
                 }
-                // --- בניית משטחים (Faces) ---
                 else if (parts[0].equals("f")) {
                     List<Integer> vIndices = new ArrayList<>();
                     List<Integer> vtIndices = new ArrayList<>();
@@ -79,37 +100,43 @@ public class ObjParser {
                         String[] subParts = parts[i].split("/");
                         vIndices.add(Integer.parseInt(subParts[0]));
 
-                        // בדיקה אם קיים מידע על טקסטורה (למשל הפורמט הוא v/vt או v/vt/vn)
                         if (subParts.length > 1 && !subParts[1].isEmpty()) {
                             vtIndices.add(Integer.parseInt(subParts[1]));
                         }
                     }
 
-                    // טריאנגולציה ויצירת המשולש המתאים
                     for (int i = 1; i < vIndices.size() - 1; i++) {
-                        Point p1 = vertices.get(vIndices.get(0));
-                        Point p2 = vertices.get(vIndices.get(i));
-                        Point p3 = vertices.get(vIndices.get(i + 1));
+                        // --- מנגנון ההגנה מפני וקטור אפס (משולשים פגומים) ---
+                        try {
+                            Point p1 = vertices.get(vIndices.get(0));
+                            Point p2 = vertices.get(vIndices.get(i));
+                            Point p3 = vertices.get(vIndices.get(i + 1));
 
-                        // אם יש לנו טקסטורה פעילה וגם אינדקסים של UV בקובץ
-                        if (activeTexture != null && vtIndices.size() >= 3) {
-                            UV uv1 = uvs.get(vtIndices.get(0));
-                            UV uv2 = uvs.get(vtIndices.get(i));
-                            UV uv3 = uvs.get(vtIndices.get(i + 1));
+                            if (activeTexture != null && vtIndices.size() >= 3) {
+                                UV uv1 = uvs.get(vtIndices.get(0));
+                                UV uv2 = uvs.get(vtIndices.get(i));
+                                UV uv3 = uvs.get(vtIndices.get(i + 1));
 
-                            TexturedTriangle tt = new TexturedTriangle(p1, p2, p3, uv1, uv2, uv3, activeTexture);
-                            tt.setMaterial(activeMaterial);
-                            modelGeometries.add(tt);
-                        } else {
-                            // משולש רגיל ללא תמונה
-                            Triangle t = new Triangle(p1, p2, p3);
-                            t.setEmission(activeEmission);
-                            t.setMaterial(activeMaterial);
-                            modelGeometries.add(t);
+                                TexturedTriangle tt = new TexturedTriangle(p1, p2, p3, uv1, uv2, uv3, activeTexture);
+                                tt.setMaterial(activeMaterial);
+                                modelGeometries.add(tt);
+                            } else {
+                                Triangle t = new Triangle(p1, p2, p3);
+                                t.setEmission(activeEmission);
+                                t.setMaterial(activeMaterial);
+                                modelGeometries.add(t);
+                            }
+                        } catch (IllegalArgumentException e) {
+                            // מתעלם בשקט וממשיך למשולש הבא במודל
                         }
                     }
                 }
             }
+
+            System.out.println("Parsed: " + new File(filePath).getName());
+            System.out.println("Min: X=" + minX + ", Y=" + minY + ", Z=" + minZ);
+            System.out.println("Max: X=" + maxX + ", Y=" + maxY + ", Z=" + maxZ + "\n");
+
         } catch (IOException e) {
             System.err.println("Failed to parse OBJ file: " + filePath);
             e.printStackTrace();

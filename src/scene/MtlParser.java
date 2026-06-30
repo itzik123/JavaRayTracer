@@ -15,7 +15,7 @@ public class MtlParser {
         Map<String, ParsedMaterial> materials = new HashMap<>();
         ParsedMaterial currentMaterial = null;
 
-        // שמירת נתיב התיקייה כדי שנדע מאיפה לטעון את ה-PNG
+        // שמירת נתיב התיקייה כדי שנדע מאיפה לטעון את ה-PNG/JPG
         String directoryPath = new File(filePath).getParent() + File.separator;
 
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
@@ -42,10 +42,30 @@ public class MtlParser {
                 else if (parts[0].equals("Ns") && currentMaterial != null) {
                     currentMaterial.material.setShininess((int) Double.parseDouble(parts[1]));
                 }
-                // --- השדרוג: טעינת הטקסטורה! ---
                 else if (parts[0].equals("map_Kd") && currentMaterial != null) {
                     String imageFileName = parts[1];
-                    currentMaterial.texture = new Texture(directoryPath + imageFileName);
+                    String fullPath = directoryPath + imageFileName;
+
+                    // --- מנגנון הגנה חכם לטקסטורות ---
+                    try {
+                        currentMaterial.texture = new Texture(fullPath);
+                    } catch (Exception e) {
+                        // במידה וטעינת הטקסטורה נכשלת (למשל סיומת לא נכונה או קובץ חסר)
+                        try {
+                            // מנסה להחליף סיומת מ-png ל-jpg או להפך
+                            if (imageFileName.toLowerCase().endsWith(".png")) {
+                                String altPath = fullPath.substring(0, fullPath.lastIndexOf('.')) + ".jpg";
+                                currentMaterial.texture = new Texture(altPath);
+                            } else if (imageFileName.toLowerCase().endsWith(".jpg")) {
+                                String altPath = fullPath.substring(0, fullPath.lastIndexOf('.')) + ".png";
+                                currentMaterial.texture = new Texture(altPath);
+                            } else {
+                                System.err.println("Warning: Missing texture file: " + fullPath + " - Rendering without it.");
+                            }
+                        } catch (Exception ex) {
+                            System.err.println("Warning: Missing texture file and fallbacks failed: " + fullPath + " - Rendering without it.");
+                        }
+                    }
                 }
             }
         } catch (IOException | NumberFormatException e) {

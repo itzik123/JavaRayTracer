@@ -2,6 +2,7 @@ package renderer;
 
 import geometries.impl.Geometries;
 import geometries.impl.Plane;
+import lighting.PointLight;
 import org.junit.jupiter.api.Test;
 import lighting.AmbientLight;
 import lighting.DirectionalLight;
@@ -125,24 +126,92 @@ public class ObjCottageTest {
     }
 
     @Test
-    public void scoutArrayHousesBoundingBox() {
-        System.out.println("Starting Scout Mission: Parsing 10 houses...");
+    public void testLaptopRender() {
+        Scene scene = new Scene("Laptop OBJ Scene")
+                .setBackground(new Color(135, 206, 235)) // רקע תכלת
+                .setAmbientLight(new AmbientLight(new Color(255, 255, 255).reduce(5)));
 
-        // יצירת סצנה ריקה רק לטובת בדיקת הנתונים
-        scene.Scene scoutScene = new scene.Scene("Scout Scene");
+        // תאורת שמש טיפה יותר חזקה כדי להאיר היטב את המקלדת והמסך
+        scene.lights.add(new DirectionalLight(new Color(255, 250, 240).reduce(2), new Vector(1, -1, 1)));
+
+        System.out.println("Parsing OBJ file...");
         scene.ObjParser parser = new scene.ObjParser();
+        scene.geometries.add(parser.parse("models/Laptop_High-Polay_HP_BI_2_obj.obj"));
 
-        // טעינת 10 הבתים בלולאה
-        for (int i = 1; i <= 10; i++) {
-            // עיצוב המספר שיהיה בפורמט 01, 02 וכו'
-            String houseName = String.format("Residential Buildings %03d.obj", i);
-            System.out.println("\n--- Parsing " + houseName + " ---");
+        // 1. חישוב נקודת המרכז המדויקת של המחשב לפי ה-Bounding Box שלך
+        Point target = new Point(0, 1.58, -0.67);
 
-            // ודא שהנתיב תואם למיקום התיקייה אצלך
-            Geometries house = parser.parse("obj/" + houseName);
-            scoutScene.geometries.add(house);
-        }
+        // 2. המחשב קטן (5x5). נמקם את המצלמה קרוב מאוד! (8 יחידות ימינה, 7 למעלה, 8 אחורה)
+        Point cameraLoc = new Point(8, 7, 8);
 
-        System.out.println("\nAll houses parsed successfully! Waiting for Bounding Box data...");
+        System.out.println("Rendering image...");
+        Camera.getBuilder()
+                .setRayTracer(scene, RayTracerType.SIMPLE)
+                .setLocation(cameraLoc)
+                .setDirection(target.subtract(cameraLoc), Vector.AXIS_Y)
+                // 3. מסגור (View Plane) קטן שמתאים לגודל הלפטופ
+                .setVpSize(10, 10).setVpDistance(10)
+                .setResolution(600, 600) // רזולוציה גבוהה לפרטים הקטנים של הטקסטורה
+                .setMultithreading(-2)
+                .setDebugPrint(0.1)
+                .build()
+                .renderImage()
+                .writeToImage("Laptop_Render_Perfect_Fit");
+
+        System.out.println("Done!");
+    }
+
+    @Test
+    public void testLaptopOnGlassTable() {
+        Scene scene = new Scene("Laptop on Glass Table")
+                .setBackground(new Color(10, 15, 25)) // רקע דרמטי וכהה להבלטת המסך
+                // תאורה סביבתית חלשה מאוד כדי לא לשרוף את התמונה
+                .setAmbientLight(new AmbientLight(new Color(255, 255, 255).reduce(10)));
+
+        // --- התיקון לחשיפת היתר: החלשנו את השמש משמעותית! ---
+        scene.lights.add(new DirectionalLight(
+                new Color(255, 245, 230).reduce(5), // חלש בהרבה מהטסט הקודם
+                new Vector(1, -1, 1)));
+
+        // תאורת ספוט עדינה שתוסיף השתקפות על השולחן
+        scene.lights.add(new PointLight(new Color(150, 150, 200), new Point(0, 15, 0))
+                .setKl(0.01).setKq(0.001));
+
+        System.out.println("Parsing OBJ file...");
+        scene.ObjParser parser = new scene.ObjParser();
+        scene.geometries.add(parser.parse("models/Laptop_High-Polay_HP_BI_2_obj.obj"));
+
+        // --- הוספת שולחן הזכוכית טושטש ---
+        Material glassTableMat = new Material()
+                .setKd(0.05).setKs(0.8).setShininess(100)
+                .setKt(0.7) // שקוף למחצה
+                .setKr(0.2) // משתקף למחצה
+                .setBlurRadius(0.15) // יוצר את פיזור הקרניים למראה זכוכית עבה (Diffuse Glass)
+                .setBlurGlassRays(12); // כמות הדגימות באלומה
+
+        // המחשב ממוקם בערך על Y=0. הקמנו את המישור ממש מתחתיו.
+        scene.geometries.add(new geometries.impl.Plane(
+                new Point(0, 0.01, 0),
+                new Vector(0, 1, 0))
+                .setEmission(new Color(5, 10, 15)) // גוון כחלחל-כהה לזכוכית
+                .setMaterial(glassTableMat));
+
+        Point target = new Point(0, 1.58, -0.67);
+        Point cameraLoc = new Point(8, 7, 8);
+
+        System.out.println("Rendering image...");
+        Camera.getBuilder()
+                .setRayTracer(scene, RayTracerType.SIMPLE)
+                .setLocation(cameraLoc)
+                .setDirection(target.subtract(cameraLoc), Vector.AXIS_Y)
+                .setVpSize(10, 10).setVpDistance(10)
+                .setResolution(50, 50)
+                .setMultithreading(-2)
+                .setDebugPrint(0.1)
+                .build()
+                .renderImage()
+                .writeToImage("Laptop_On_Glass_Table");
+
+        System.out.println("Done!");
     }
 }
