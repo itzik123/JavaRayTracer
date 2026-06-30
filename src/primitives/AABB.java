@@ -61,4 +61,22 @@ public class AABB {
 
         return true;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        AABB other = (AABB) obj;
+        return min.equals(other.min) && max.equals(other.max);
+    }
+
+    @Override
+    public int hashCode() {
+        return java.util.Objects.hash(min, max);
+    }
+
+    @Override
+    public String toString() {
+        return "AABB [min=" + min + ", max=" + max + "]";
+    }
 }

@@ -302,4 +302,22 @@ class CylinderTest {
         assertEquals(INTERSECTION_BV72, CYLINDER.findIntersections(BV72), ERROR_CYLINDER_INTERSECTION);
         assertEquals(INTERSECTION_BV73, CYLINDER.findIntersections(BV73), ERROR_CYLINDER_INTERSECTION);
     }
+
+    private static final Cylinder CYLINDER_AABB = new Cylinder(0.5, new Ray(new Point(0, 0, 0), new Vector(0, 1, 0)), 2);
+    // מרכז תחתון (0,0,0), מרכז עליון (0,2,0). רדיוס 0.5.
+    // לכן מינימום: X=-0.5, Y=-0.5, Z=-0.5.
+    // מקסימום: X=0.5, Y=2.5, Z=0.5.
+    private static final primitives.AABB EXPECTED_CYLINDER_AABB = new primitives.AABB(
+            new Point(-0.5, -0.5, -0.5), new Point(0.5, 2.5, 0.5));
+
+    /**
+     * test method for bounding box creation.
+     */
+    @Test
+    void testBoundingBox() {
+        // ============ Equivalence Partitions Tests ==============
+        // TC01: Correct AABB for a cylinder
+        CYLINDER.setBoundingBox();
+        assertEquals(EXPECTED_CYLINDER_AABB, CYLINDER_AABB.getBoundingBox(), "ERROR: Wrong AABB for Cylinder");
+    }
 }

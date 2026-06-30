@@ -70,4 +70,18 @@ class GeometriesTest {
         Geometries emptyGeometries = new Geometries();
         assertNull(emptyGeometries.findIntersections(EP01), "ERROR: Expected null for empty geometries collection");
     }
+
+    private static final primitives.AABB EXPECTED_GEOMETRIES_AABB = new primitives.AABB(
+            new Point(-1, -1, -1), new Point(1, 1, 1));
+
+    /**
+     * test method for bounding box creation of a collection of geometries.
+     */
+    @Test
+    void testBoundingBox() {
+        // ============ Equivalence Partitions Tests ==============
+        // TC01: Correct global AABB for a collection containing Sphere, Triangle, and an infinite Tube
+        GEOMETRIES.setBoundingBox(); // מחשב את ה-AABB הגלובלי ומקפיץ NVI גם לילדים
+        assertEquals(EXPECTED_GEOMETRIES_AABB, GEOMETRIES.getBoundingBox(), "ERROR: Wrong global AABB for Geometries collection");
+    }
 }

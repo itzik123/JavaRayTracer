@@ -175,4 +175,17 @@ class SphereTest {
         // TC42: Ray starts inside, ray is orthogonal to ray start to sphere's center line
         assertEquals(INTERSECTION_BV42, SPHERE.findIntersections(BV42), ERROR_SPHERE_INTERSECTION);
     }
+
+    private static final primitives.AABB EXPECTED_SPHERE_AABB = new primitives.AABB(new Point(-1, -1, -1), new Point(1, 1, 1));
+
+    /**
+     * test method for bounding box creation.
+     */
+    @Test
+    void testBoundingBox() {
+        // ============ Equivalence Partitions Tests ==============
+        // TC01: Correct AABB for a simple sphere
+        SPHERE.setBoundingBox();
+        assertEquals(EXPECTED_SPHERE_AABB, SPHERE.getBoundingBox(), "ERROR: Wrong AABB for Sphere");
+    }
 }

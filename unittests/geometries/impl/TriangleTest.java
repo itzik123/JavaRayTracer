@@ -179,4 +179,18 @@ class TriangleTest {
         // TC41: Ray begins on the plane and points away
         assertNull(TRIANGLE.findIntersections(BV41), ERROR_TRIANGLE_INTERSECTION);
     }
+
+    private static final Triangle TRIANGLE_AABB = new Triangle(new Point(-1, -1, 0), new Point(-1, 1, 0), new Point(1, 0, 0));
+    private static final primitives.AABB EXPECTED_TRIANGLE_AABB = new primitives.AABB(new Point(-1, -1, 0), new Point(1, 1, 0));
+
+    /**
+     * test method for bounding box creation.
+     */
+    @Test
+    void testBoundingBox() {
+        // ============ Equivalence Partitions Tests ==============
+        // TC01: Correct AABB for a simple triangle
+        TRIANGLE.setBoundingBox();
+        assertEquals(EXPECTED_TRIANGLE_AABB, TRIANGLE_AABB.getBoundingBox(), "ERROR: Wrong AABB for Triangle");
+    }
 }
