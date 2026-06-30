@@ -246,6 +246,8 @@ public class Camera implements Cloneable {
         private Vector _vUp = Vector.AXIS_Y;
         private double _rotationAngle = 0;
         private int _gridResolution = 50; // ברירת מחדל
+        private int _maxGeometriesPerVoxel = 10;
+        private int _maxOctreeDepth = 5;
 
         public Builder setGridResolution(int resolution) {
             this._gridResolution = resolution;
@@ -296,6 +298,8 @@ public class Camera implements Cloneable {
                 _camera._rayTracer = new SimpleRayTracer(scene);
             } else if (type == RayTracerType.REGULAR_GRID) {
                 _camera._rayTracer = new RegularGridRayTracer(scene, _gridResolution);
+            } else if (type == RayTracerType.ADAPTIVE_GRID) {
+                _camera._rayTracer = new AdaptiveGridRayTracer(scene, _maxGeometriesPerVoxel, _maxOctreeDepth);
             } else {
                 throw new IllegalArgumentException("Unsupported ray tracer type: " + type);
             }
@@ -304,6 +308,12 @@ public class Camera implements Cloneable {
 
         public Builder setAntiAliasing(int resolution, SamplingPattern pattern) {
             _camera._antiAliasingTargetArea.setResolution(resolution).setSamplingPattern(pattern);
+            return this;
+        }
+
+        public Builder setAdaptiveGridParameters(int maxGeometries, int maxDepth) {
+            this._maxGeometriesPerVoxel = maxGeometries;
+            this._maxOctreeDepth = maxDepth;
             return this;
         }
 

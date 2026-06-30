@@ -51,6 +51,12 @@ public class ObjParser {
         Color activeEmission = _defaultEmission;
         Texture activeTexture = null;
 
+        // --- תוספת לאלגוריתם הפריסה האוטומטית ---
+        List<Point[]> deferredDisplayTriangles = new ArrayList<>();
+        Texture displayTexture = null;
+        Material displayMaterial = null;
+        // ----------------------------------------
+
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
             while ((line = br.readLine()) != null) {
@@ -104,23 +110,15 @@ public class ObjParser {
                             Point p2 = vertices.get(vIndices.get(i));
                             Point p3 = vertices.get(vIndices.get(i + 1));
 
-                            // --- תיקון הפריסה הדינמי (Planar Mapping) למסך ---
+                            // --- זיהוי מסך ללא UV ושמירתו לשלב הפריסה האוטומטית ---
                             if (currentMaterialName.equals("Display") && activeTexture != null) {
-                                double[] c1 = rawVertices.get(vIndices.get(0));
-                                double[] c2 = rawVertices.get(vIndices.get(i));
-                                double[] c3 = rawVertices.get(vIndices.get(i + 1));
-
-                                // חישוב מתמטי מדויק לפי הקופסה התוחמת שחישבנו (רוחב 5, גובה 1.6)
-                                UV customUv1 = new UV((c1[0] + 2.5) / 5.0, (3.14 - c1[1]) / 1.6);
-                                UV customUv2 = new UV((c2[0] + 2.5) / 5.0, (3.14 - c2[1]) / 1.6);
-                                UV customUv3 = new UV((c3[0] + 2.5) / 5.0, (3.14 - c3[1]) / 1.6);
-
-                                TexturedTriangle tt = new TexturedTriangle(p1, p2, p3, customUv1, customUv2, customUv3, activeTexture);
-                                tt.setMaterial(activeMaterial);
-                                modelGeometries.add(tt);
+                                deferredDisplayTriangles.add(new Point[]{p1, p2, p3});
+                                displayTexture = activeTexture;
+                                displayMaterial = activeMaterial;
                                 continue;
                             }
 
+                            // --- יצירת שאר חלקי הלפטופ (המקלדת, הפלסטיק וכו') ---
                             if (activeTexture != null && vtIndices.size() >= 3) {
                                 UV uv1 = uvs.get(vtIndices.get(0));
                                 UV uv2 = uvs.get(vtIndices.get(i));
@@ -143,6 +141,36 @@ public class ObjParser {
             }
         } catch (IOException e) {
             System.err.println("Failed to parse OBJ file: " + filePath);
+        }
+
+        // --- הפעלת מנגנון Auto Planar Projection למסך ---
+        if (!deferredDisplayTriangles.isEmpty()) {
+            double minX = Double.POSITIVE_INFINITY, maxX = Double.NEGATIVE_INFINITY;
+            double minY = Double.POSITIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
+
+            // 1. סריקה מהירה למציאת הגבולות המדויקים של המסך
+            for (Point[] tri : deferredDisplayTriangles) {
+                for (Point p : tri) {
+                    if (p.getX() < minX) minX = p.getX();
+                    if (p.getX() > maxX) maxX = p.getX();
+                    if (p.getY() < minY) minY = p.getY();
+                    if (p.getY() > maxY) maxY = p.getY();
+                }
+            }
+
+            double widthX = maxX - minX;
+            double heightY = maxY - minY;
+
+            // 2. יצירת המשולשים עם UV מחושב מתמטית ויחסית לגודל המסך
+            for (Point[] tri : deferredDisplayTriangles) {
+                UV uv1 = new UV((tri[0].getX() - minX) / widthX, (tri[0].getY() - minY) / heightY);
+                UV uv2 = new UV((tri[1].getX() - minX) / widthX, (tri[1].getY() - minY) / heightY);
+                UV uv3 = new UV((tri[2].getX() - minX) / widthX, (tri[2].getY() - minY) / heightY);
+
+                TexturedTriangle tt = new TexturedTriangle(tri[0], tri[1], tri[2], uv1, uv2, uv3, displayTexture);
+                tt.setMaterial(displayMaterial);
+                modelGeometries.add(tt);
+            }
         }
 
         return modelGeometries;

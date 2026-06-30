@@ -40,7 +40,8 @@ public class ObjCottageTest {
                 //.addPostProcessFilter(new FXAAFilter().setJitterStrength(0.05f))
                 .build();
     }
-
+    private static int LOW =30, MEDIUM = 50 , HIGH =70;
+    private static int RESOLUTION = HIGH;
     @Test
     public void renderCottageAngles() {
         // 1. הגדרת סצנה
@@ -201,12 +202,13 @@ public class ObjCottageTest {
 
         System.out.println("Rendering image...");
         Camera.getBuilder()
+                .setGridResolution(RESOLUTION)
                 .setRayTracer(scene, RayTracerType.SIMPLE)
                 .setLocation(cameraLoc)
                 .setDirection(target.subtract(cameraLoc), Vector.AXIS_Y)
                 .setVpSize(10, 10).setVpDistance(10)
                 .setResolution(30, 30)
-                .setMultithreading(-2)
+                .setMultithreading(3)
                 .setDebugPrint(0.1)
                 .build()
                 .renderImage()
@@ -259,12 +261,14 @@ public class ObjCottageTest {
 
         System.out.println("Rendering final masterpiece...");
         Camera.getBuilder()
-                .setRayTracer(scene, RayTracerType.SIMPLE)
+                .setGridResolution(RESOLUTION)
+                .setRayTracer(scene, RayTracerType.REGULAR_GRID)
                 .setLocation(cameraLoc)
                 .setDirection(target.subtract(cameraLoc), Vector.AXIS_Y)
                 .setVpSize(8, 8).setVpDistance(10)
-                .setResolution(600, 600)
-                .setMultithreading(-2)
+                .setResolution(1000, 1000)
+                .setAntiAliasing(9, new Jittered())
+                .setMultithreading(-1)
                 .setDebugPrint(0.1)
                 .build()
                 .renderImage()

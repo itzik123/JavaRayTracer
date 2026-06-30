@@ -97,6 +97,21 @@ public class AABB {
         return tMinX < 0 ? 0 : tMinX; // אם ראשית הקרן בתוך הקופסה, המרחק לכניסה הוא 0
     }
 
+    /**
+     * Checks if this bounding box overlaps with another bounding box.
+     * @param other the other AABB to check against
+     * @return true if the boxes overlap, false otherwise
+     */
+    public boolean isOverlapping(AABB other) {
+        if (other == null) return false;
+
+        boolean overlapX = this.min.getX() <= other.max.getX() && this.max.getX() >= other.min.getX();
+        boolean overlapY = this.min.getY() <= other.max.getY() && this.max.getY() >= other.min.getY();
+        boolean overlapZ = this.min.getZ() <= other.max.getZ() && this.max.getZ() >= other.min.getZ();
+
+        return overlapX && overlapY && overlapZ;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;

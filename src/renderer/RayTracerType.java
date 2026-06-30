@@ -12,9 +12,11 @@ public enum RayTracerType {
    SIMPLE,
 
    /**
-    * A ray tracer that uses a regular grid acceleration structure.
+    * A ray tracer that uses a regular grid acceleration structure.(the abstract stuff)
     */
    GRID,
 
-    REGULAR_GRID
+    REGULAR_GRID,
+
+    ADAPTIVE_GRID
 }
