@@ -78,6 +78,11 @@ public class Camera implements Cloneable {
     /** The post-processing engine for 2D image filters */
     private PostProcessingEngine _postProcessingEngine = new PostProcessingEngine();
 
+    /** Maximum depth for Adaptive Super-Sampling recursion (0 means disabled) */
+    private int _adaptiveAASDepth = 0;
+
+    /** Tolerance for color similarity in Adaptive Super-Sampling */
+    private double _adaptiveAASThreshold = 0.0;
 
     /**
      * Private default constructor to prevent direct instantiation.
@@ -92,6 +97,7 @@ public class Camera implements Cloneable {
     public static Builder getBuilder() {
         return new Builder();
     }
+
 
     /**
      * This function renders image's pixel color map from the scene.
@@ -154,16 +160,27 @@ public class Camera implements Cloneable {
     }
 
     private void castRay(int xIndex, int yIndex) {
-        List<Ray> rays = constructRays(xIndex, yIndex);
-        Color finalColor = Color.BLACK;
+        Color finalColor;
 
-        for (Ray ray : rays) {
-            finalColor = finalColor.add(_rayTracer.traceRay(ray));
+        if (_adaptiveAASDepth > 0) {
+            finalColor = AdaptiveSuperSampler.sample(
+                    getPixelCenter(xIndex, yIndex), _pixelWidth, _pixelHeight,
+                    _vRight, _vUp,
+                    _adaptiveAASDepth, _adaptiveAASThreshold,
+                    // The Lambda Magic!
+                    p -> _rayTracer.traceRay(new Ray(_p0, p.subtract(_p0)))
+            );
+        } else {
+            List<Ray> rays = constructRays(xIndex, yIndex);
+            finalColor = Color.BLACK;
+
+            for (Ray ray : rays) {
+                finalColor = finalColor.add(_rayTracer.traceRay(ray));
+            }
+            finalColor = finalColor.reduce(rays.size());
         }
 
-        finalColor = finalColor.reduce(rays.size());
         _imageWriter.writePixel(xIndex, yIndex, finalColor);
-
         _pixelManager.pixelDone();
     }
 
@@ -248,6 +265,18 @@ public class Camera implements Cloneable {
         private int _gridResolution = 50; // ברירת מחדל
         private int _maxGeometriesPerVoxel = 10;
         private int _maxOctreeDepth = 5;
+
+        /**
+         * Enables and configures Adaptive Super-Sampling.
+         * @param depth maximum recursion depth (e.g., 2, 3, 4)
+         * @param threshold tolerance for color similarity (e.g., 1.0, 5.0)
+         * @return the Builder itself
+         */
+        public Builder setAdaptiveSuperSampling(int depth, double threshold) {
+            _camera._adaptiveAASDepth = depth;
+            _camera._adaptiveAASThreshold = threshold;
+            return this;
+        }
 
         public Builder setGridResolution(int resolution) {
             this._gridResolution = resolution;
@@ -373,6 +402,9 @@ public class Camera implements Cloneable {
             if (_camera._rayTracer == null) {
                 this.setRayTracer(new Scene("test"), RayTracerType.SIMPLE);
             }
+
+            // --- תוספת: עדכון מנוע הרנדור בהגדרות הרשת! ---
+            _camera._rayTracer.setAdaptiveSuperSampling(_camera._adaptiveAASDepth, _camera._adaptiveAASThreshold);
 
             try {
                 return (Camera) _camera.clone();

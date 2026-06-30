@@ -160,18 +160,19 @@ class SimpleRayTracer extends RayTracerBase {
         if (!kR.equals(Double3.ZERO)) {
             Ray reflectionRay = constructReflectionRay(intersection);
 
-            List<Ray> reflectionRaysBeam = constructRayBeam(
-                    reflectionRay,
-                    intersection.normal,
-                    material.blurRadius,
-                    reflectionRaysCount // שימוש במשתנה המאובטח שלנו
-            );
-
-            Color tempColor = Color.BLACK;
-            for (Ray ray : reflectionRaysBeam) {
-                tempColor = tempColor.add(calcGlobalEffect(ray, level, k, kR));
+            // שימוש ברשת מסתגלת במקום אלומה עיוורת!
+            if (_adaptiveAASDepth > 0 && material.blurRadius > 0 && level == MAX_CALC_COLOR_LEVEL) {
+                color = color.add(sampleGlossyAdaptive(reflectionRay, intersection.normal, material.blurRadius, level, k, kR));
+            } else {
+                List<Ray> reflectionRaysBeam = constructRayBeam(
+                        reflectionRay, intersection.normal, material.blurRadius, reflectionRaysCount
+                );
+                Color tempColor = Color.BLACK;
+                for (Ray ray : reflectionRaysBeam) {
+                    tempColor = tempColor.add(calcGlobalEffect(ray, level, k, kR));
+                }
+                color = color.add(tempColor.reduce(reflectionRaysBeam.size()));
             }
-            color = color.add(tempColor.reduce(reflectionRaysBeam.size()));
         }
 
         // --- 2. אפקט השקיפות (Refraction / Diffused Glass) ---
@@ -179,18 +180,19 @@ class SimpleRayTracer extends RayTracerBase {
         if (!kT.equals(Double3.ZERO)) {
             Ray refractedRay = constructRefractionRay(intersection);
 
-            List<Ray> refractedRaysBeam = constructRayBeam(
-                    refractedRay,
-                    intersection.normal,
-                    material.blurRadius,
-                    refractionRaysCount // שימוש במשתנה המאובטח שלנו
-            );
-
-            Color tempColor = Color.BLACK;
-            for (Ray ray : refractedRaysBeam) {
-                tempColor = tempColor.add(calcGlobalEffect(ray, level, k, kT));
+            // שימוש ברשת מסתגלת גם לזכוכית!
+            if (_adaptiveAASDepth > 0 && material.blurRadius > 0 && level == MAX_CALC_COLOR_LEVEL) {
+                color = color.add(sampleGlossyAdaptive(refractedRay, intersection.normal, material.blurRadius, level, k, kT));
+            } else {
+                List<Ray> refractedRaysBeam = constructRayBeam(
+                        refractedRay, intersection.normal, material.blurRadius, refractionRaysCount
+                );
+                Color tempColor = Color.BLACK;
+                for (Ray ray : refractedRaysBeam) {
+                    tempColor = tempColor.add(calcGlobalEffect(ray, level, k, kT));
+                }
+                color = color.add(tempColor.reduce(refractedRaysBeam.size()));
             }
-            color = color.add(tempColor.reduce(refractedRaysBeam.size()));
         }
 
         return color;
@@ -326,5 +328,41 @@ class SimpleRayTracer extends RayTracerBase {
             }
         }
         return beam;
+    }
+
+    /**
+     * Calculates glossy reflections or diffused glass using Adaptive Super-Sampling.
+     */
+    private Color sampleGlossyAdaptive(Ray centerRay, Vector n, double radius, int level, Double3 k, Double3 kx) {
+        Point p0 = centerRay.origin();
+        Vector dir = centerRay.direction();
+        Point centerPoint = p0.add(dir);
+
+        Vector vX;
+        try {
+            if (Math.abs(dir.dotProduct(Vector.AXIS_X)) > 0.9) {
+                vX = dir.crossProduct(Vector.AXIS_Y).normalize();
+            } else {
+                vX = dir.crossProduct(Vector.AXIS_X).normalize();
+            }
+        } catch (IllegalArgumentException e) {
+            vX = dir.crossProduct(Vector.AXIS_Y).normalize();
+        }
+        Vector vY = dir.crossProduct(vX).normalize();
+
+        double nv = n.dotProduct(dir);
+
+        return AdaptiveSuperSampler.sample(
+                centerPoint, radius * 2, radius * 2,
+                vX, vY,
+                _adaptiveAASDepth, _adaptiveAASThreshold,
+                // The Lambda Magic for Glossy!
+                p -> {
+                    Vector rayDir = p.subtract(p0);
+                    // מניעת יריית קרן אל תוך הגוף עצמו:
+                    if (n.dotProduct(rayDir) * nv <= 0) return Color.BLACK;
+                    return calcGlobalEffect(new Ray(p0, rayDir), level, k, kx);
+                }
+        );
     }
 }

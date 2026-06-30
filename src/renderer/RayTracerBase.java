@@ -12,6 +12,18 @@ import static primitives.Util.alignZero;
 abstract class RayTracerBase {
     protected final Scene _scene;
 
+    protected int _adaptiveAASDepth = 0;
+    protected double _adaptiveAASThreshold = 0.0;
+
+    /**
+     * Sets the Adaptive Super-Sampling configuration.
+     */
+    public RayTracerBase setAdaptiveSuperSampling(int depth, double threshold) {
+        this._adaptiveAASDepth = depth;
+        this._adaptiveAASThreshold = threshold;
+        return this;
+    }
+
     abstract Color traceRay(Ray ray);
 
     RayTracerBase(Scene scene){

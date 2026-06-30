@@ -137,6 +137,18 @@ public final class Color {
       return new Color(_rgb.divide(k));
    }
 
+    /**
+     * Checks if this color is similar to another color within a given tolerance.
+     * @param other the color to compare with
+     * @param tolerance the maximum allowed difference per RGB channel
+     * @return true if the colors are similar, false otherwise
+     */
+    public boolean isSimilar(Color other, double tolerance) {
+        return Math.abs(_rgb._d1() - other._rgb._d1()) <= tolerance &&
+                Math.abs(_rgb._d2() - other._rgb._d2()) <= tolerance &&
+                Math.abs(_rgb._d3() - other._rgb._d3()) <= tolerance;
+    }
+
    /**
     * Tolerant equality based on {@code DELTA} per RGB component.
     * Intended for floating-point comparisons in rendering and tests.
