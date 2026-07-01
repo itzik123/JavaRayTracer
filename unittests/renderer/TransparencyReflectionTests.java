@@ -209,7 +209,7 @@ class TransparencyReflectionTests {
             }
 
             // פיזור 25 מקורות אור בתוך המערבולת שיאירו את כל הבלגן הזה מבפנים!
-            if (i % 20 == 0) {
+            if (i % 50 == 0) {
                 scene.lights.add(new PointLight(col.scale(1.5), p).setKl(0.005).setKq(0.0001));
             }
         }
@@ -221,17 +221,18 @@ class TransparencyReflectionTests {
 
         // --- Render ---
         Camera.getBuilder()
-                .setRayTracer(scene, RayTracerType.SIMPLE)
+                .setRayTracer(scene, RayTracerType.REGULAR_GRID)
                 .setLocation(new Point(0, 10, 180)) // מבט מלמטה כלפי מעלה אל תוך המערבולת
                 .setDirection(new Point(0, 30, -150).subtract(new Point(0, 10, 180)), new Vector(0, 1, 0))
                 .setVpSize(200, 200).setVpDistance(150)
                 .setResolution(1000, 1000) // תתכונן למעבד רותח
                 .setAntiAliasing(9, new Jittered())
+                .setAdaptiveSuperSampling(3, 5.0)
                 .setMultithreading(4)
                 .setDebugPrint(0.1)
                 .build()
                 .renderImage()
-                .writeToImage("bonus1_shattered_dimension_v2");
+                .writeToImage("bonus1_shattered_dimension_v3");
     }
 
     @Test

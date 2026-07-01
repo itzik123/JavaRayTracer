@@ -8,7 +8,6 @@ import geometries.impl.Geometries;
 import geometries.impl.Sphere;
 import geometries.impl.Triangle;
 import org.junit.jupiter.api.*;
-import geometries.*;
 import lighting.PointLight;
 import primitives.*;
 import scene.Scene;
