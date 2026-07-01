@@ -45,12 +45,14 @@ public class FinalPerformanceTest {
                 .setKd(0.05).setKs(0.8).setShininess(100)
                 .setKt(0.7)
                 .setKr(0.2)
-                .setBlurRadius(0.15)
-                .setBlurGlassRays(12);
+                .setBlurRadius(0.05)
+                .setBlurGlassRays(24);
 
-        SCENE.geometries.add(new Plane(
-                new Point(0, 0.01, 0),
-                new Vector(0, 1, 0))
+        SCENE.geometries.add(new geometries.impl.Polygon(
+                new Point(-7, 0.01, 4.33),
+                new Point(7, 0.01, 4.33),
+                new Point(7, 0.01, -5.67),
+                new Point(-7, 0.01, -5.67))
                 .setEmission(new Color(5, 10, 15))
                 .setMaterial(glassTableMat));
 
@@ -63,7 +65,7 @@ public class FinalPerformanceTest {
                 .setLocation(CAMERA_LOC)
                 .setDirection(TARGET.subtract(CAMERA_LOC), Vector.AXIS_Y)
                 .setVpSize(10, 10).setVpDistance(10)
-                .setResolution(800, 800) // רזולוציה אחידה למדידה
+                .setResolution(4000, 4000) // רזולוציה אחידה למדידה
                 .setDebugPrint(0.1)
                 // שיפור MP1 חייב להיות דלוק תמיד (בהנחה ש-Jittered זמין)
                 .setAntiAliasing(25, new primitives.Jittered());

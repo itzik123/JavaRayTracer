@@ -237,7 +237,7 @@ public class ObjCottageTest {
                 .setKd(0.05).setKs(0.8).setShininess(100)
                 .setKt(0.7)
                 .setKr(0.2)
-                .setBlurRadius(0.15)
+                .setBlurRadius(0.05)
                 .setBlurGlassRays(12);
 
         // --- שולחן זכוכית (פוליגון מלבני ומיושר במקום מישור אינסופי) ---
@@ -259,18 +259,81 @@ public class ObjCottageTest {
 
         System.out.println("Rendering final masterpiece...");
         Camera.getBuilder()
+                .setAdaptiveGridParameters(15, 8)
                 .setRayTracer(scene, RayTracerType.ADAPTIVE_GRID)
                 .setLocation(cameraLoc)
                 .setDirection(target.subtract(cameraLoc), Vector.AXIS_Y)
                 .setVpSize(8, 8).setVpDistance(10)
-                .setResolution(1000, 1000)
+                .setResolution(4000, 4000)
                 .setMultithreading(-1)
-                .setAdaptiveSuperSampling(3, 3.0)
+                .setAdaptiveSuperSampling(3, 5.0)
                 .setDebugPrint(0.1)
                 .setAntiAliasing(25, new Jittered())
                 .build()
                 .renderImage()
                 .writeToImage("Laptop_Final_Masterpiece_ASS_AG");
+
+        System.out.println("Done!");
+    }
+
+    @Test
+    public void testLaptopOnGlassTableFinalAngle() {
+        Scene scene = new Scene("Laptop on Glass Desk")
+                .setBackground(new Color(10, 15, 25)) // רקע סטודיו כהה ואלגנטי
+                .setAmbientLight(new AmbientLight(new Color(255, 255, 255).reduce(10)));
+
+        // תאורת שמש מוחלשת שלא שורפת את המסך
+        scene.lights.add(new DirectionalLight(new Color(255, 250, 240).reduce(5), new Vector(1, -1, 1)));
+
+        // ספוט לייט עדין כדי לתת השתקפות על השולחן
+        scene.lights.add(new PointLight(new Color(100, 100, 150), new Point(0, 10, 2))
+                .setKl(0.01).setKq(0.001));
+
+        System.out.println("Parsing OBJ file...");
+        scene.ObjParser parser = new scene.ObjParser();
+        scene.geometries.add(parser.parse("models/Laptop_High-Polay_HP_BI_2_obj.obj"));
+
+        // --- חומר זכוכית חלבית לשולחן ---
+        Material glassTableMat = new Material()
+                .setKd(0.05).setKs(0.8).setShininess(100)
+                .setKt(0.7)
+                .setKr(0.2);
+                //.setBlurRadius(0.05)
+                //.setBlurGlassRays(12);
+
+        // --- שולחן זכוכית (פוליגון מלבני ומיושר במקום מישור אינסופי) ---
+        scene.geometries.add(new geometries.impl.Polygon(
+                new Point(-7, 0.01, 4.33),
+                new Point(7, 0.01, 4.33),
+                new Point(7, 0.01, -5.67),
+                new Point(-7, 0.01, -5.67))
+                .setEmission(new Color(5, 10, 15))
+                .setMaterial(glassTableMat));
+
+
+        // --- הנדסת המצלמה ---
+        // 1. הסטת המטרה ממרכז המקלדת אל מרכז המסך (גבוה יותר, עמוק יותר, ומעט שמאלה)
+        Point target = new Point(-0.5, 2.8, -2.0);
+
+        // 2. זווית נמוכה יותר וזום-אין ממוקד כדי למלא את הפריים ולחתוך את קצה השולחן למטה
+        Vector angleOffset = new Vector(-9, 3.2, 7.5).scale(1.15);
+        Point cameraLoc = target.add(angleOffset);
+
+        System.out.println("Rendering final masterpiece...");
+        Camera.getBuilder()
+                .setAdaptiveGridParameters(15, 8)
+                .setRayTracer(scene, RayTracerType.ADAPTIVE_GRID)
+                .setLocation(cameraLoc)
+                .setDirection(target.subtract(cameraLoc), Vector.AXIS_Y)
+                .setVpSize(8, 8).setVpDistance(10)
+                .setResolution(4000, 4000)
+                .setMultithreading(-1)
+                .setAdaptiveSuperSampling(3, 5.0)
+                .setDebugPrint(0.1)
+                .setAntiAliasing(25, new Jittered())
+                .build()
+                .renderImage()
+                .writeToImage("Laptop_Final_Masterpiece2_ASS_AG");
 
         System.out.println("Done!");
     }

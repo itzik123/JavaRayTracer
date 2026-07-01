@@ -330,7 +330,7 @@ class LightsTests {
      * Produce an epic, procedurally generated galaxy scene V6.
      * Features: Zoomed-out camera, vibrant colors, white central halo, and background star clusters.
      */
-    @Disabled
+    @Test
     @SuppressWarnings("java:S109")
     void testMilkyWayEpicGalaxyV6() {
         Scene scene = new Scene("Milky Way Galaxy V6")
@@ -458,15 +458,17 @@ class LightsTests {
 
         // --- רינדור ---
         Camera.getBuilder()
-                .setRayTracer(scene, RayTracerType.SIMPLE)
+                .setRayTracer(scene, RayTracerType.REGULAR_GRID)
                 .setLocation(new Point(0, 0, 1000))
                 .setDirection(Point.ZERO, Vector.AXIS_Y)
                 // הגדלנו את שדה הראייה ל-350 כדי "להתרחק" ולראות שוליים שחורים
                 .setVpSize(1000, 1000).setVpDistance(1000)
-                .setResolution(5000, 5000) // !!! שנה כאן ל-5000 אחרי הטסט !!!
+                .setResolution(100, 100) // !!! שנה כאן ל-5000 אחרי הטסט !!!
+                .setDebugPrint(0.1)
+                .setMultithreading(4)
                 .build()
                 .renderImage()
-                .writeToImage("milkyWayEpicGalaxyV6");
+                .writeToImage("milkyWayEpicGalaxyV7");
     }
 
     /**

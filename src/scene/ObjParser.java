@@ -84,7 +84,11 @@ public class ObjParser {
                     double y = Double.parseDouble(parts[2]);
                     double z = Double.parseDouble(parts[3]);
 
-
+                    if (offset != null) {
+                        x += offset.getX();
+                        y += offset.getY();
+                        z += offset.getZ();
+                    }
 
                     rawVertices.add(new double[]{x, y, z});
                     vertices.add(new Point(x, y, z));
