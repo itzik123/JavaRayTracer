@@ -15,7 +15,7 @@ import java.util.Set;
 
 /**
  * A ray tracer that utilizes a Regular Grid (Voxel Grid) to accelerate intersection calculations
- * using the 3DDDA algorithm.
+ * using the 3D-DDA algorithm.
  */
 public class RegularGridRayTracer extends SimpleRayTracer {
 
@@ -27,7 +27,7 @@ public class RegularGridRayTracer extends SimpleRayTracer {
     }
 
     /**
-     * Core 3DDDA traversal logic. Used by all ray types (primary, reflection, shadow).
+     * Core 3D-DDA traversal logic. Used by all ray types (primary, reflection, shadow).
      */
     private List<Intersection> traceGrid(Ray ray, double maxDistance) {
         List<Intersection> allIntersections = new ArrayList<>();
@@ -132,12 +132,28 @@ public class RegularGridRayTracer extends SimpleRayTracer {
 
     // --- דריסת הפונקציות של SimpleRayTracer כדי להשתמש ברשת ---
 
+    /**
+     * Finds the closest intersection point of a given ray with the geometries in the scene.
+     * This implementation overrides the default behavior to utilize the 3D DDA regular grid
+     * for accelerated intersection testing, checking only geometries within the traversed voxels.
+     *
+     * @param ray the ray to trace through the scene
+     * @return the closest {@link Intersection} found, or {@code null} if no intersection occurs
+     */
     @Override
     protected Intersection findClosestIntersection(Ray ray) {
         var intersections = traceGrid(ray, Double.POSITIVE_INFINITY);
         return intersections == null ? null : ray.findClosestIntersection(intersections);
     }
 
+    /**
+     * Checks whether a specific intersection point is unshaded (i.e., not blocked by opaque objects)
+     * from a given light source. This method casts a shadow ray and traverses the regular grid
+     * up to the maximum distance of the light source.
+     *
+     * @param intersection the intersection point containing the geometry, point, and light source context
+     * @return {@code true} if the point is unshaded (light reaches it), {@code false} if it is blocked
+     */
     @Override
     protected boolean unshaded(Intersection intersection) {
         Vector lightDirection = intersection.light.getL(intersection.point).scale(-1);
@@ -153,6 +169,15 @@ public class RegularGridRayTracer extends SimpleRayTracer {
         return true;
     }
 
+    /**
+     * Calculates the accumulated transparency factor (ktr) of all geometries between a given
+     * intersection point and the light source. It uses the regular grid to efficiently trace
+     * the shadow ray, allowing for partial shadowing by transparent or translucent objects.
+     *
+     * @param intersection the intersection point containing the geometry, point, and light source context
+     * @return a {@link primitives.Double3} representing the accumulated transmission coefficient,
+     * where {@code Double3.ONE} is fully unshaded and {@code Double3.ZERO} is completely blocked
+     */
     @Override
     protected primitives.Double3 transparency(Intersection intersection) {
         Vector lightDirection = intersection.light.getL(intersection.point).scale(-1);
