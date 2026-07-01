@@ -259,18 +259,18 @@ public class ObjCottageTest {
 
         System.out.println("Rendering final masterpiece...");
         Camera.getBuilder()
-                .setGridResolution(70)
-                .setRayTracer(scene, RayTracerType.REGULAR_GRID)
+                .setRayTracer(scene, RayTracerType.ADAPTIVE_GRID)
                 .setLocation(cameraLoc)
                 .setDirection(target.subtract(cameraLoc), Vector.AXIS_Y)
                 .setVpSize(8, 8).setVpDistance(10)
                 .setResolution(1000, 1000)
                 .setMultithreading(-1)
+                .setAdaptiveSuperSampling(3, 3.0)
                 .setDebugPrint(0.1)
                 .setAntiAliasing(25, new Jittered())
                 .build()
                 .renderImage()
-                .writeToImage("Laptop_Final_Masterpiece");
+                .writeToImage("Laptop_Final_Masterpiece_ASS_AG");
 
         System.out.println("Done!");
     }
