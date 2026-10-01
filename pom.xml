@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>io.github.itzik123</groupId>
+    <artifactId>ray-tracer</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>Java Ray Tracer</name>
+    <description>A physically inspired ray tracing engine written in pure Java, with spatial acceleration
+        structures, adaptive super-sampling, multithreading and a post-processing pipeline.</description>
+    <url>https://github.com/itzik123/ISE5786_8332_7818</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+
+    <properties>
+        <maven.compiler.release>25</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <junit.version>5.14.0</junit.version>
+        <!-- Heavy showcase renders are opt-in: mvn test -Pshowcase -->
+        <excluded.test.groups>showcase</excluded.test.groups>
+        <included.test.groups/>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <sourceDirectory>src</sourceDirectory>
+        <testSourceDirectory>unittests</testSourceDirectory>
+
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.14.0</version>
+                <configuration>
+                    <compilerArgs>
+                        <arg>-Xlint:all</arg>
+                    </compilerArgs>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.3</version>
+                <configuration>
+                    <groups>${included.test.groups}</groups>
+                    <excludedGroups>${excluded.test.groups}</excludedGroups>
+                    <!-- Rendered images are written to ./images relative to the project root -->
+                    <workingDirectory>${project.basedir}</workingDirectory>
+                    <argLine>-Xmx4g</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.11.2</version>
+                <configuration>
+                    <show>private</show>
+                    <quiet>true</quiet>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <!-- Runs only the heavy showcase renders and benchmarks -->
+            <id>showcase</id>
+            <properties>
+                <excluded.test.groups/>
+                <included.test.groups>showcase</included.test.groups>
+            </properties>
+        </profile>
+    </profiles>
+</project>
