@@ -3,25 +3,28 @@ package lighting;
 import primitives.Color;
 
 /**
- * Abstract class representing a general light source.
+ * Base class of all lights, holding the emitted intensity.
+ *
  * @author itzik123
  */
 abstract class Light {
 
-    /** The original intensity of the light */
+    /** The intensity emitted by the light. */
     protected final Color _intensity;
 
     /**
-     * Protected constructor to initialize the light intensity.
-     * @param intensity the color intensity of the light
+     * Creates a light.
+     *
+     * @param intensity the intensity emitted by the light
      */
     protected Light(Color intensity) {
-        this._intensity = intensity;
+        _intensity = intensity;
     }
 
     /**
-     * Getter for the light's original intensity.
-     * @return the intensity color
+     * Returns the intensity emitted by the light.
+     *
+     * @return the intensity emitted by the light
      */
     public Color getIntensity() {
         return _intensity;

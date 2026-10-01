@@ -3,19 +3,19 @@ package lighting;
 import primitives.Color;
 
 /**
- * Represents the ambient light in the scene.
- * This class is immutable.
+ * Uniform background light that reaches every surface regardless of position and direction.
+ *
  * @author itzik123
  */
 public class AmbientLight extends Light {
 
-    /** Constant representing no ambient light (pitch black). */
+    /** No ambient light at all. */
     public static final AmbientLight NONE = new AmbientLight(Color.BLACK);
 
     /**
-     * Constructor to initialize the ambient light with a specific intensity.
+     * Creates an ambient light.
      *
-     * @param intensity the color intensity of the ambient light
+     * @param intensity the intensity of the ambient light
      */
     public AmbientLight(Color intensity) {
         super(intensity);

@@ -1,18 +1,28 @@
 package scene;
 
-import primitives.Color;
 import primitives.Material;
 import primitives.Texture;
 
-public class ParsedMaterial {
-    public String name;
-    public Color diffuseColor = Color.BLACK;
-    public Material material = new Material().setKd(0.8).setKs(0.2).setShininess(20);
+/**
+ * A material read from an MTL file: its optical properties and optional diffuse texture.
+ *
+ * @author itzik123
+ */
+final class ParsedMaterial {
 
-    // השדה החדש! יחזיק את תמונת ה-PNG אם היא קיימת
-    public Texture texture = null;
+    /** The material name, as referenced by {@code usemtl}. */
+    final String name;
+    /** The optical properties; defaults suit untextured, slightly glossy surfaces. */
+    final Material material = new Material().setKd(0.8).setKs(0.2).setShininess(20);
+    /** The diffuse texture ({@code map_Kd}), or {@code null}. */
+    Texture texture;
 
-    public ParsedMaterial(String name) {
+    /**
+     * Creates a material with default properties.
+     *
+     * @param name the material name
+     */
+    ParsedMaterial(String name) {
         this.name = name;
     }
 }

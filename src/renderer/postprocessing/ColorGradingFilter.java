@@ -1,88 +1,119 @@
 package renderer.postprocessing;
 
-import java.awt.Color;
-import java.awt.image.BufferedImage;
+import static renderer.postprocessing.Pixels.LUMA_B;
+import static renderer.postprocessing.Pixels.LUMA_G;
+import static renderer.postprocessing.Pixels.LUMA_R;
+import static renderer.postprocessing.Pixels.blue;
+import static renderer.postprocessing.Pixels.green;
+import static renderer.postprocessing.Pixels.red;
 
 /**
- * A post-processing filter for Color Grading, optimized for LDR images (0-255).
- * Features Exposure, Contrast, Gamma Correction, and Saturation adjustments.
+ * Color grading for the final look of the image: exposure, contrast, gamma and saturation, applied
+ * in that order. Every parameter defaults to 1, which leaves the image unchanged.
+ *
+ * @author itzik123
  */
-public class ColorGradingFilter implements PostProcessFilter {
+public class ColorGradingFilter extends PixelFilter {
 
-    /** חשיפה (מכפיל ליניארי). 1.0 = ללא שינוי, 1.2 = בהיר יותר, 0.8 = חשוך יותר */
+    /** Linear brightness multiplier. */
     private float _exposure = 1.0f;
-
-    /** תיקון גמא. 1.0 = ללא שינוי. ערכים גדולים מ-1.0 מבהירים את גווני הביניים, קטנים מ-1.0 מחשיכים אותם */
+    /** Gamma correction; values above 1 brighten the mid-tones. */
     private float _gamma = 1.0f;
-
-    /** ניגודיות. 1.0 = ללא שינוי */
+    /** Contrast around mid-gray. */
     private float _contrast = 1.0f;
-
-    /** רווית צבע. 1.0 = ללא שינוי */
+    /** Color saturation; 0 gives grayscale. */
     private float _saturation = 1.0f;
 
-    // --- Setters ---
+    /** Creates a color grading filter that leaves the image unchanged until configured. */
+    public ColorGradingFilter() {
+    }
 
-    public ColorGradingFilter setExposure(float exposure) { this._exposure = exposure; return this; }
-    public ColorGradingFilter setGamma(float gamma) { this._gamma = gamma; return this; }
-    public ColorGradingFilter setContrast(float contrast) { this._contrast = contrast; return this; }
-    public ColorGradingFilter setSaturation(float saturation) { this._saturation = saturation; return this; }
+    /**
+     * Sets the linear brightness multiplier.
+     *
+     * @param exposure the linear brightness multiplier
+     * @return this filter
+     */
+    public ColorGradingFilter setExposure(float exposure) {
+        _exposure = exposure;
+        return this;
+    }
+
+    /**
+     * Sets the gamma correction; values above 1 brighten the mid-tones.
+     *
+     * @param gamma the gamma correction; values above 1 brighten the mid-tones
+     * @return this filter
+     * @throws IllegalArgumentException if gamma is not positive
+     */
+    public ColorGradingFilter setGamma(float gamma) {
+        if (gamma <= 0) throw new IllegalArgumentException("Gamma must be positive");
+        _gamma = gamma;
+        return this;
+    }
+
+    /**
+     * Sets the contrast around mid-gray.
+     *
+     * @param contrast the contrast around mid-gray
+     * @return this filter
+     */
+    public ColorGradingFilter setContrast(float contrast) {
+        _contrast = contrast;
+        return this;
+    }
+
+    /**
+     * Sets the color saturation; 0 gives grayscale.
+     *
+     * @param saturation the color saturation; 0 gives grayscale
+     * @return this filter
+     */
+    public ColorGradingFilter setSaturation(float saturation) {
+        _saturation = saturation;
+        return this;
+    }
 
     @Override
-    public BufferedImage apply(BufferedImage image) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-
-        int[] pixels = image.getRGB(0, 0, width, height, null, 0, width);
-        int[] resultPixels = new int[pixels.length];
-
+    protected int[] process(int[] pixels, int width, int height) {
+        float invGamma = 1.0f / _gamma;
+        int[] result = new int[pixels.length];
         for (int i = 0; i < pixels.length; i++) {
-            int rgb = pixels[i];
+            float r = grade(red(pixels[i]) / 255.0f, invGamma);
+            float g = grade(green(pixels[i]) / 255.0f, invGamma);
+            float b = grade(blue(pixels[i]) / 255.0f, invGamma);
 
-            // המרה לטווח 0.0 - 1.0
-            float r = ((rgb >> 16) & 0xFF) / 255.0f;
-            float g = ((rgb >> 8) & 0xFF) / 255.0f;
-            float b = (rgb & 0xFF) / 255.0f;
+            float luma = LUMA_R * r + LUMA_G * g + LUMA_B * b;
+            r = clamp(luma + _saturation * (r - luma));
+            g = clamp(luma + _saturation * (g - luma));
+            b = clamp(luma + _saturation * (b - luma));
 
-            // 1. Exposure (חשיפה ליניארית)
-            r *= _exposure;
-            g *= _exposure;
-            b *= _exposure;
-
-            // 2. Contrast (סביב נקודת האמצע 0.5)
-            r = (r - 0.5f) * _contrast + 0.5f;
-            g = (g - 0.5f) * _contrast + 0.5f;
-            b = (b - 0.5f) * _contrast + 0.5f;
-
-            // חיתוך לפני גמא כדי למנוע ערכים שליליים (NaN)
-            r = Math.max(0.0f, Math.min(1.0f, r));
-            g = Math.max(0.0f, Math.min(1.0f, g));
-            b = Math.max(0.0f, Math.min(1.0f, b));
-
-            // 3. Gamma Correction (תיקון גמא לגווני הביניים)
-            if (_gamma != 1.0f) {
-                float invGamma = 1.0f / _gamma;
-                r = (float) Math.pow(r, invGamma);
-                g = (float) Math.pow(g, invGamma);
-                b = (float) Math.pow(b, invGamma);
-            }
-
-            // 4. Saturation (רוויה)
-            float luma = 0.299f * r + 0.587f * g + 0.114f * b;
-            r = luma + _saturation * (r - luma);
-            g = luma + _saturation * (g - luma);
-            b = luma + _saturation * (b - luma);
-
-            // 5. חיתוך סופי
-            r = Math.max(0.0f, Math.min(1.0f, r));
-            g = Math.max(0.0f, Math.min(1.0f, g));
-            b = Math.max(0.0f, Math.min(1.0f, b));
-
-            resultPixels[i] = new Color((int) Math.round(r * 255), (int) Math.round(g * 255), (int) Math.round(b * 255)).getRGB();
+            // Round rather than truncate, or float error would darken every pixel by one level
+            result[i] = Math.round(r * 255) << 16 | Math.round(g * 255) << 8 | Math.round(b * 255);
         }
-
-        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-        result.setRGB(0, 0, width, height, resultPixels, 0, width);
         return result;
+    }
+
+    /**
+     * Applies exposure, contrast and gamma to one channel.
+     *
+     * @param value    the channel value, 0-1
+     * @param invGamma the reciprocal of the gamma
+     * @return the graded value, 0-1
+     */
+    private float grade(float value, float invGamma) {
+        // Clamp before the gamma curve, which is undefined for negative values
+        value = clamp((value * _exposure - 0.5f) * _contrast + 0.5f);
+        return _gamma == 1.0f ? value : (float) Math.pow(value, invGamma);
+    }
+
+    /**
+     * Clamps a channel value to the displayable range.
+     *
+     * @param value a channel value
+     * @return the value clamped to [0, 1]
+     */
+    private static float clamp(float value) {
+        return Math.max(0.0f, Math.min(1.0f, value));
     }
 }

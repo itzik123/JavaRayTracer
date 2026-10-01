@@ -1,45 +1,35 @@
 package primitives;
 
+import static primitives.Util.isZero;
+
 import geometries.api.Intersectable.Intersection;
 
 import java.util.List;
 import java.util.Objects;
 
 /**
- * Represents a ray in 3D space, defined by an origin point and a direction vector.
+ * An immutable ray: an origin point and a unit direction vector.
+ *
  * @author itzik123
  */
 public class Ray {
     /**
-     * The origin point of the ray.
+     * Distance by which secondary rays are pushed off their surface to avoid hitting it again
+     * because of floating-point error ("shadow acne").
      */
-    private final Point _origin;
-
-    /**
-     * The direction vector of the ray.
-     */
-    private final Vector _direction;
-
-    /** Constant for shifting the ray origin to prevent self-shadowing/reflections */
     private static final double DELTA = 0.1;
 
+    /** The origin of the ray. */
+    private final Point _origin;
+
+    /** The unit direction of the ray. */
+    private final Vector _direction;
+
     /**
-     * Constructor for a Ray with a slight displacement along the normal
-     * to avoid self-intersections (Shadow Acne).
-     * * @param head      original starting point of the ray
-     * @param direction direction of the ray
-     * @param normal    normal vector at the starting point
-     */
-    public Ray(Point head, Vector direction, Vector normal) {
-        Vector epsVector = normal.scale(normal.dotProduct(direction) > 0 ? DELTA : -DELTA);
-        this._origin = head.add(epsVector);
-        this._direction = direction.normalize();
-    }
-    /**
-     * Constructor to initialize a ray with an origin point and a direction vector.
-     * The direction vector is automatically normalized.
-     * @param origin    the origin point of the ray
-     * @param direction the direction vector of the ray
+     * Creates a ray; the direction is normalized.
+     *
+     * @param origin    the origin of the ray
+     * @param direction the direction of the ray
      */
     public Ray(Point origin, Vector direction) {
         _origin = origin;
@@ -47,61 +37,71 @@ public class Ray {
     }
 
     /**
-     * Returns the origin point of the ray.
-     * @return the origin point
+     * Creates a secondary ray leaving a surface. The origin is offset by {@link #DELTA} along the
+     * surface normal, towards the side the ray is heading to, so the ray cannot re-hit the
+     * surface it starts from.
+     *
+     * @param head      the point on the surface
+     * @param direction the direction of the ray
+     * @param normal    the surface normal at {@code head}
+     */
+    public Ray(Point head, Vector direction, Vector normal) {
+        _origin = head.add(normal.scale(normal.dotProduct(direction) > 0 ? DELTA : -DELTA));
+        _direction = direction.normalize();
+    }
+
+    /**
+     * Returns the origin of the ray.
+     *
+     * @return the origin of the ray
      */
     public Point origin() {
         return _origin;
     }
 
     /**
-     * Returns the direction vector of the ray.
-     * @return the direction vector
+     * Returns the unit direction of the ray.
+     *
+     * @return the unit direction of the ray
      */
     public Vector direction() {
         return _direction;
     }
 
     /**
-     * @param t te scale we add to the origin
-     * @return the point in distance of t from the origin in the direction of the ray
+     * Calculates the point at a given distance along the ray.
+     *
+     * @param t the distance from the origin (may be negative)
+     * @return {@code origin + t * direction}
      */
     public Point getPoint(double t) {
-        try {
-            return _origin.add(_direction.scale(t));
-        } catch (IllegalArgumentException _) {
-            return _origin;
-        }
+        return isZero(t) ? _origin : _origin.add(_direction.scale(t));
     }
 
     /**
-     * Finds the closest point to the ray origin among a list of points.
-     * Maintained for backward compatibility.
-     * @param points a list of points
-     * @return the closest point, or null if the list is empty/null
+     * Finds the point closest to the ray origin.
+     *
+     * @param points the candidate points
+     * @return the closest point, or {@code null} if the list is {@code null} or empty
      */
     public Point findClosestPoint(List<Point> points) {
         return points == null || points.isEmpty() ? null
-                : findClosestIntersection(points.stream()
-                .map(p -> new geometries.api.Intersectable.Intersection(null, p))
-                .toList()).point;
+                : findClosestIntersection(points.stream().map(p -> new Intersection(null, p)).toList()).point;
     }
 
     /**
-     * Finds the closest intersection to the ray origin among a list of intersections.
-     * @param intersections a list of intersections
-     * @return the closest intersection, or null if the list is empty/null
+     * Finds the intersection closest to the ray origin.
+     *
+     * @param intersections the candidate intersections
+     * @return the closest intersection, or {@code null} if the list is {@code null} or empty
      */
     public Intersection findClosestIntersection(List<Intersection> intersections) {
-        if (intersections == null || intersections.isEmpty()) {
-            return null;
-        }
+        if (intersections == null) return null;
 
-        geometries.api.Intersectable.Intersection closest = null;
-        double minDistance = Double.MAX_VALUE;
-
-        for (geometries.api.Intersectable.Intersection intersection : intersections) {
-            double distance = intersection.point.distanceSquared(this.origin()); // הנחתי שפונקציית הגישה לראש הקרן היא origin()
+        Intersection closest = null;
+        double minDistance = Double.POSITIVE_INFINITY;
+        for (Intersection intersection : intersections) {
+            double distance = intersection.point.distanceSquared(_origin);
             if (distance < minDistance) {
                 minDistance = distance;
                 closest = intersection;
@@ -118,9 +118,7 @@ public class Ray {
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Ray other = (Ray) obj;
-        return _origin.equals(other._origin) && _direction.equals(other._direction);
+        return obj instanceof Ray other && _origin.equals(other._origin) && _direction.equals(other._direction);
     }
 
     @Override

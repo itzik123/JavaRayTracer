@@ -1,22 +1,17 @@
 package renderer;
 
 /**
- * Enumerates the available ray tracing strategies.
- * <p>
- * Used to select which ray tracer implementation the renderer should use.
+ * Selects how the ray tracer finds the geometry a ray hits.
+ *
+ * @author itzik123
  */
 public enum RayTracerType {
-   /**
-    * A basic ray tracer.
-    */
-   SIMPLE,
+    /** Tests every ray against every geometry - simplest, best for small scenes. */
+    SIMPLE,
 
-   /**
-    * A ray tracer that uses a regular grid acceleration structure.(the abstract stuff)
-    */
-   GRID,
-
+    /** Uniform voxel grid traversed with 3D-DDA - good for evenly spread geometry. */
     REGULAR_GRID,
 
+    /** Octree that subdivides only dense regions - best for detailed meshes. */
     ADAPTIVE_GRID
 }

@@ -1,31 +1,31 @@
 package geometries.impl;
 
+import static java.lang.Math.sqrt;
+import static primitives.Util.alignZero;
+
+import primitives.AABB;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static geometries.api.Intersectable.Intersection;
-
-import static java.lang.Math.sqrt;
-import static primitives.Util.alignZero;
-import static primitives.Util.isZero;
-
 /**
- * Represents a sphere in 3D space.
+ * A sphere, defined by its center and radius.
+ *
+ * @author itzik123
  */
 public class Sphere extends RadialGeometry {
 
-    /** The center point of the sphere */
+    /** The center of the sphere. */
     private final Point _center;
 
     /**
-     * Constructor to initialize a sphere with a radius and a center point.
+     * Creates a sphere.
+     *
+     * @param center the center of the sphere
      * @param radius the radius of the sphere
-     * @param center the center point of the sphere
      */
     public Sphere(Point center, double radius) {
         super(radius);
@@ -37,48 +37,42 @@ public class Sphere extends RadialGeometry {
         return point.subtract(_center).normalize();
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Projects the center onto the ray ({@code tm}) and uses the distance {@code d} between the
+     * center and the ray line: the line hits the sphere at {@code tm ± sqrt(r² - d²)}. Tangent
+     * rays are not intersections.
+     */
     @Override
-    protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance){
-        if (ray.origin().equals(_center)) {
-            return alignZero(_radius - maxDistance) <= 0 ? List.of(new Intersection(this, ray.getPoint(_radius))) : null;
-        }
+    protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
+        // From the center, every direction exits the sphere exactly at distance r
+        if (ray.origin().equals(_center))
+            return alignZero(_radius - maxDistance) > 0 ? null : List.of(new Intersection(this, ray.getPoint(_radius)));
 
         Vector u = _center.subtract(ray.origin());
         double tm = alignZero(u.dotProduct(ray.direction()));
         double dSquared = alignZero(u.lengthSquared() - tm * tm);
+        double thSquared = alignZero(_radiusSquared - dSquared);
+        if (thSquared <= 0) return null;
 
-        if (alignZero(dSquared - _radiusSquared) >= 0) {
-            return null;
-        }
-
-        double th = alignZero(sqrt(_radiusSquared - dSquared));
-
+        double th = alignZero(sqrt(thSquared));
         double t1 = alignZero(tm - th);
         double t2 = alignZero(tm + th);
+        boolean valid1 = t1 > 0 && alignZero(t1 - maxDistance) <= 0;
+        boolean valid2 = t2 > 0 && alignZero(t2 - maxDistance) <= 0;
 
-        boolean validT1 = t1 > 0 && alignZero(t1 - maxDistance) <= 0;
-        boolean validT2 = t2 > 0 && alignZero(t2 - maxDistance) <= 0;
-
-        if (validT1 && validT2) {
-            return List.of(new Intersection(this, ray.getPoint(t1)), new Intersection(this, ray.getPoint(t2)));
-        }
-        if (validT1) {
-            return List.of(new Intersection(this, ray.getPoint(t1)));
-        }
-        if (validT2) {
-            return List.of(new Intersection(this, ray.getPoint(t2)));
-        }
+        if (valid1 && valid2) return List.of(new Intersection(this, ray.getPoint(t1)), new Intersection(this, ray.getPoint(t2)));
+        if (valid1) return List.of(new Intersection(this, ray.getPoint(t1)));
+        if (valid2) return List.of(new Intersection(this, ray.getPoint(t2)));
         return null;
     }
+
     @Override
-    protected primitives.AABB createBoundingBox() {
-        double r = _radius;
-        Point center = _center;
-
-        Point min = new Point(center.getX() - r, center.getY() - r, center.getZ() - r);
-        Point max = new Point(center.getX() + r, center.getY() + r, center.getZ() + r);
-
-        return new primitives.AABB(min, max);
+    protected AABB createBoundingBox() {
+        return new AABB(
+                new Point(_center.getX() - _radius, _center.getY() - _radius, _center.getZ() - _radius),
+                new Point(_center.getX() + _radius, _center.getY() + _radius, _center.getZ() + _radius));
     }
 
     @Override
@@ -88,14 +82,11 @@ public class Sphere extends RadialGeometry {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Sphere other = (Sphere) obj;
-        return super._radius == other._radius && _center.equals(other._center);
+        return super.equals(obj) && _center.equals(((Sphere) obj)._center);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super._radius, _center);
+        return Objects.hash(_radius, _center);
     }
 }

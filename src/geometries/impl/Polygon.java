@@ -3,136 +3,103 @@ package geometries.impl;
 import static primitives.Util.alignZero;
 import static primitives.Util.isZero;
 
-import java.util.LinkedList;
-import java.util.List;
-
-import static geometries.api.Intersectable.Intersection;
-
 import geometries.api.Geometry;
+import primitives.AABB;
+import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
-import primitives.Point;
+
+import java.util.List;
 
 /**
- * Represents a convex polygon in a 3D Cartesian coordinate system.
+ * A convex, planar polygon.
  * <p>
- * The polygon is defined by an ordered sequence of vertices.
- * All vertices must lie in the same plane and be arranged along the
- * polygon edge path.
- * </p>
- * <p>
- * The polygon must be convex.
- * </p>
+ * The vertices must be ordered along the edge path, lie in one plane and form a convex shape;
+ * all of this is validated by the constructor.
+ *
  * @author Dan Zilberstein
  */
 public class Polygon extends Geometry {
-   /** Ordered list of polygon vertices */
-   protected final List<Point> _vertices;
-   /** Plane containing the polygon */
-   protected final Plane       _plane;
-   /** Number of vertices */
-   private final int           _size;
 
-   /**
-    * Constructs a convex polygon from ordered vertices.
-    * <p>
-    * The vertices must:
-    * </p>
-    * <ul>
-    * <li>Contain at least three points</li>
-    * <li>Be ordered along the polygon edge path</li>
-    * <li>Lie in the same plane</li>
-    * <li>Form a convex polygon</li>
-    * </ul>
-    * @param  vertices                 polygon vertices in edge order
-    * @throws IllegalArgumentException if the vertices do not form a valid convex
-    *                                  polygon
-    */
-   public Polygon(Point... vertices) {
-      if (vertices.length < 3)
-         throw new IllegalArgumentException("A polygon can't have less than 3 vertices");
-      _vertices = List.of(vertices);
-      _size     = vertices.length;
+    /** The vertices, in edge order. */
+    protected final List<Point> _vertices;
+    /** The plane containing the polygon. */
+    protected final Plane _plane;
+    /** The number of vertices. */
+    private final int _size;
 
-      // Create the supporting plane using the first three vertices.
-      // The plane stores the constant normal of the polygon.
-      _plane    = new Plane(vertices[0], vertices[1], vertices[2]);
-      if (_size == 3) return; // no need for more tests for a Triangle
+    /**
+     * Creates a convex polygon from its vertices.
+     *
+     * @param vertices at least three coplanar vertices, ordered along the edge path of a convex
+     *                 polygon
+     * @throws IllegalArgumentException if the vertices do not form a valid convex polygon
+     */
+    public Polygon(Point... vertices) {
+        if (vertices.length < 3) throw new IllegalArgumentException("A polygon can't have less than 3 vertices");
+        _vertices = List.of(vertices);
+        _size = vertices.length;
 
-      Vector  n        = _plane.getNormal(vertices[0]);
-      // Subtracting identical vertices would create a zero vector (illegal)
-      Vector  edge1    = vertices[_size - 1].subtract(vertices[_size - 2]);
-      Vector  edge2    = vertices[0].subtract(vertices[_size - 1]);
+        // The plane through the first three vertices defines the normal of the polygon
+        _plane = new Plane(vertices[0], vertices[1], vertices[2]);
+        if (_size == 3) return; // any three distinct, non-collinear points form a valid triangle
 
-      // Cross product of consecutive edges determines orientation.
-      // All edge pairs must produce the same sign relative to the normal,
-      // otherwise the polygon is concave or vertices are unordered.
-      boolean positive = edge1.crossProduct(edge2).dotProduct(n) > 0;
-      for (var i = 1; i < _size; ++i) {
-         // Test that the point is in the same plane as calculated originally
-         if (!isZero(vertices[i].subtract(vertices[0]).dotProduct(n)))
-            throw new IllegalArgumentException("All vertices of a polygon must lay in the same plane");
-         // Test the consequent edges have
-         edge1 = edge2;
-         edge2 = vertices[i].subtract(vertices[i - 1]);
-         if (positive != (edge1.crossProduct(edge2).dotProduct(n) > 0))
-            throw new IllegalArgumentException("All vertices must be ordered and the polygon must be convex");
-      }
-   }
+        Vector n = _plane.getNormal(vertices[0]);
+        // Subtracting identical vertices would create a zero vector (illegal)
+        Vector edge1 = vertices[_size - 1].subtract(vertices[_size - 2]);
+        Vector edge2 = vertices[0].subtract(vertices[_size - 1]);
 
+        // In a convex polygon, the cross products of consecutive edges all point to the same side
+        // of the plane; a sign change means the polygon is concave or its vertices are unordered
+        boolean positive = edge1.crossProduct(edge2).dotProduct(n) > 0;
+        for (int i = 1; i < _size; ++i) {
+            if (!isZero(vertices[i].subtract(vertices[0]).dotProduct(n)))
+                throw new IllegalArgumentException("All vertices of a polygon must lay in the same plane");
+            edge1 = edge2;
+            edge2 = vertices[i].subtract(vertices[i - 1]);
+            if (positive != (edge1.crossProduct(edge2).dotProduct(n) > 0))
+                throw new IllegalArgumentException("All vertices must be ordered and the polygon must be convex");
+        }
+    }
+
+    @Override
+    public Vector getNormal(Point point) {
+        return _plane.getNormal(point);
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The supporting plane is intersected first - a cheap test that rejects most rays and
+     * enforces {@code maxDistance}. The hit is then kept only if it is strictly inside the
+     * polygon: for every edge, the ray must pass on the same side of the triangle formed by the
+     * ray origin and that edge. Hits on an edge or a vertex are not intersections.
+     */
     @Override
     protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
-       try {
-           boolean isPositive = false;
-           int size = _vertices.size();
-           Vector v1 = _vertices.getFirst().subtract(ray.origin());
-           for (int i = 0; i < size; i++) {
-               Vector v2 = _vertices.get((i + 1) % size).subtract(ray.origin());
-               Vector n = v1.crossProduct(v2).normalize();
-               double vn = alignZero(ray.direction().dotProduct(n));
-               if (isZero(vn)) {
-                   return null;
-               }
-               if (i == 0) {
-                   isPositive = (vn > 0);
-               } else if ((vn > 0) != isPositive) {
-                   return null;
-               }
-               v1 = v2;
-           }
-           // Respect maxDistance, so objects beyond a light do not cast shadows
-           List<Intersection> planeIntersections = _plane.calcIntersections(ray, maxDistance);
-           if (planeIntersections == null) {
-               return null;
-           }
+        var planeIntersections = _plane.calcIntersections(ray, maxDistance);
+        if (planeIntersections == null) return null;
 
-           return List.of(new Intersection(this, planeIntersections.getFirst().point));
-       } catch (IllegalArgumentException _) {
-           return null;
-       }
-    }
-    @Override
-    protected primitives.AABB createBoundingBox() {
-        double minX = Double.POSITIVE_INFINITY;
-        double minY = Double.POSITIVE_INFINITY;
-        double minZ = Double.POSITIVE_INFINITY;
-
-        double maxX = Double.NEGATIVE_INFINITY;
-        double maxY = Double.NEGATIVE_INFINITY;
-        double maxZ = Double.NEGATIVE_INFINITY;
-
-        for (Point p : _vertices) {
-            if (p.getX() < minX) minX = p.getX();
-            if (p.getY() < minY) minY = p.getY();
-            if (p.getZ() < minZ) minZ = p.getZ();
-
-            if (p.getX() > maxX) maxX = p.getX();
-            if (p.getY() > maxY) maxY = p.getY();
-            if (p.getZ() > maxZ) maxZ = p.getZ();
+        // The origin is off the plane here, so the vectors to the vertices are never zero
+        // and consecutive ones are never parallel
+        Point origin = ray.origin();
+        Vector direction = ray.direction();
+        Vector v1 = _vertices.get(_size - 1).subtract(origin);
+        boolean positive = false;
+        for (int i = 0; i < _size; ++i) {
+            Vector v2 = _vertices.get(i).subtract(origin);
+            // Normalizing keeps the zero test independent of the scene scale
+            double sign = alignZero(direction.dotProduct(v1.crossProduct(v2).normalize()));
+            if (sign == 0) return null; // on an edge or its continuation
+            if (i == 0) positive = sign > 0;
+            else if (positive != sign > 0) return null;
+            v1 = v2;
         }
-
-        return new primitives.AABB(new Point(minX, minY, minZ), new Point(maxX, maxY, maxZ));
+        return List.of(new Intersection(this, planeIntersections.getFirst().point));
     }
-   @Override
-   public Vector getNormal(Point point) { return _plane.getNormal(point); }
+
+    @Override
+    protected AABB createBoundingBox() {
+        return AABB.enclosing(_vertices);
+    }
 }

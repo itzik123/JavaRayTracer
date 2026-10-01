@@ -1,118 +1,90 @@
 package renderer;
 
 /**
- * PixelManager is a helper class. It is used for multi-threading in the
- * renderer and
- * for follow up its progress.<br/>
- * A Camera uses one pixel manager object and several Pixel objects - one in
- * each thread.
+ * Hands out pixels to rendering threads and reports the rendering progress.
+ * <p>
+ * Pixels are handed out one at a time, in row-major order, so threads naturally balance the
+ * load between cheap and expensive regions of the image.
+ *
  * @author Dan Zilberstein
  */
 class PixelManager {
+
     /**
-     * Immutable class for object containing allocated pixel (with its row and
-     * column numbers)
-     * @param col pixel column number
-     * @param row pixel row number
+     * A pixel to render.
+     *
+     * @param row the pixel row
+     * @param col the pixel column
      */
     record Pixel(int row, int col) {
     }
 
-    /** Maximum rows of pixels */
-    private int                 maxRows       = 0;
-    /** Maximum columns of pixels */
-    private int                 maxCols       = 0;
-    /** Total amount of pixels in the generated image */
-    private long                totalPixels   = 0l;
+    /** Printing format of the progress percentage. */
+    private static final String PRINT_FORMAT = "%5.1f%%%n";
 
-    /** Currently processed row of pixels */
-    private volatile int        cRow          = 0;
-    /** Currently processed column of pixels */
-    private volatile int        cCol          = -1;
-    /** Amount of pixels that have been processed */
-    private volatile long       pixels        = 0l;
-    /** Last printed progress update percentage */
-    private volatile int        lastPrinted   = 0;
+    /** The number of pixel rows. */
+    private final int _maxRows;
+    /** The number of pixel columns. */
+    private final int _maxCols;
+    /** The total number of pixels. */
+    private final long _totalPixels;
+    /** The progress printing step, in tenths of a percent (0 disables printing). */
+    private final long _printInterval;
 
-    /** Flag of debug printing of progress percentage */
-    private boolean             print         = false;
-    /** Progress percentage printing interval */
-    private long                printInterval = 100l;
-    /** Printing format */
-    private static final String PRINT_FORMAT  = "%5.1f%%\n";
+    /** Guards the allocation of the next pixel. */
+    private final Object _nextLock = new Object();
+    /** Guards the progress counters. */
+    private final Object _progressLock = new Object();
 
-    /**
-     * Mutual exclusion object for synchronizing next pixel allocation between
-     * threads
-     */
-    private Object              mutexNext     = new Object();
-    /**
-     * Mutual exclusion object for printing progress percentage in console window
-     * by different threads
-     */
-    private Object              mutexPixels   = new Object();
+    /** The row of the last allocated pixel. */
+    private int _row = 0;
+    /** The column of the last allocated pixel. */
+    private int _col = -1;
+    /** The number of completed pixels. */
+    private long _donePixels = 0;
+    /** The last printed progress, in tenths of a percent. */
+    private long _lastPrinted = 0;
 
     /**
-     * Initialize pixel manager data for multi-threading
-     * @param maxRows  the amount of pixel rows
-     * @param maxCols  the amount of pixel columns
-     * @param interval print time interval in seconds, 0 if printing is not
-     *                 required
+     * Creates a pixel manager for an image.
+     *
+     * @param maxRows       the number of pixel rows
+     * @param maxCols       the number of pixel columns
+     * @param printInterval the progress printing interval, as a percentage step (0 disables it)
      */
-    PixelManager(int maxRows, int maxCols, double... interval) {
-        if (interval.length > 1) throw new IllegalArgumentException("only up to one interval argument is allowed");
-        this.maxRows  = maxRows;
-        this.maxCols  = maxCols;
-        totalPixels   = (long) maxRows * maxCols;
-        printInterval = interval.length == 0 ? printInterval : (long) (interval[0] * 10);
-        print         = printInterval != 0;
-        if (print) {
-            System.out.printf(PRINT_FORMAT, 0d);
-            System.out.flush();
-        }
+    PixelManager(int maxRows, int maxCols, double printInterval) {
+        _maxRows = maxRows;
+        _maxCols = maxCols;
+        _totalPixels = (long) maxRows * maxCols;
+        _printInterval = (long) (printInterval * 10);
+        if (_printInterval != 0) System.out.printf(PRINT_FORMAT, 0d);
     }
 
     /**
-     * Function for thread-safe manipulating of main follow up Pixel object - this
-     * function is critical section for all the threads, and the pixel manager data
-     * is the shared data of this critical section.<br/>
-     * The function provides next available pixel number each call.
-     * @return true if next pixel is allocated, false if there are no more pixels
+     * Allocates the next pixel to render.
+     *
+     * @return the next pixel, or {@code null} when all pixels have been allocated
      */
     Pixel nextPixel() {
-        synchronized (mutexNext) {
-            if (cRow == maxRows) return null;
-
-            ++cCol;
-            if (cCol < maxCols)
-                return new Pixel(cRow, cCol);
-
-            cCol = 0;
-            ++cRow;
-            if (cRow < maxRows)
-                return new Pixel(cRow, cCol);
+        synchronized (_nextLock) {
+            if (_row == _maxRows) return null;
+            if (++_col < _maxCols) return new Pixel(_row, _col);
+            _col = 0;
+            return ++_row < _maxRows ? new Pixel(_row, _col) : null;
         }
-        return null;
     }
 
-    /** Finish pixel processing by updating and printing of progress percentage */
+    /**
+     * Records the completion of a pixel and prints the progress when it crosses the next step.
+     */
     void pixelDone() {
-        boolean flag       = false;
-        int     percentage = 0;
-        synchronized (mutexPixels) {
-            ++pixels;
-            if (print) {
-                percentage = (int) (1000l * pixels / totalPixels);
-                if (percentage - lastPrinted >= printInterval) {
-                    lastPrinted = percentage;
-                    flag        = true;
-                }
-            }
-            if (flag) {
-                System.out.printf(PRINT_FORMAT, percentage / 10d);
-                System.out.flush();
+        if (_printInterval == 0) return;
+        synchronized (_progressLock) {
+            long progress = 1000L * ++_donePixels / _totalPixels;
+            if (progress - _lastPrinted >= _printInterval) {
+                _lastPrinted = progress;
+                System.out.printf(PRINT_FORMAT, progress / 10d);
             }
         }
-
     }
 }

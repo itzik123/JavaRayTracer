@@ -1,150 +1,109 @@
 package renderer.postprocessing;
 
-import java.awt.Color;
-import java.awt.image.BufferedImage;
+import static renderer.postprocessing.Pixels.blue;
+import static renderer.postprocessing.Pixels.green;
+import static renderer.postprocessing.Pixels.luma;
+import static renderer.postprocessing.Pixels.red;
 
 /**
- * A realistic post-processing filter that simulates the optical effect of "Bloom" or Glow.
- * Fixed version: Prevents color washout and accurately extracts only highly luminous points.
+ * Simulates the glow ("bloom") that bright light produces in a camera lens.
+ * <p>
+ * Pixels brighter than a threshold are extracted, blurred into a halo and combined with the
+ * original image using screen blending, {@code 1 - (1 - a)(1 - b)}, which brightens without ever
+ * exceeding white.
+ *
+ * @author itzik123
  */
-public class BloomFilter implements PostProcessFilter {
+public class BloomFilter extends PixelFilter {
 
-    /** * הסף שממנו פיקסל נחשב "בוהק".
-     * הועלה משמעותית כדי לחלץ רק כתמי אור (Specular) חזקים ולא את האובייקטים עצמם.
-     */
+    /** The luma above which a pixel contributes to the glow. */
     private float _threshold = 0.90f;
-
+    /** The radius of the glow, in pixels. */
     private int _blurRadius = 10;
-
-    /** עוצמת השילוב העדינה */
+    /** The strength of the glow when blended back. */
     private float _intensity = 0.5f;
 
+    /** Creates a bloom filter with moderate default settings. */
+    public BloomFilter() {
+    }
+
+    /**
+     * Sets the luma above which a pixel glows, in [0, 1).
+     *
+     * @param threshold the luma above which a pixel glows, in [0, 1)
+     * @return this filter
+     * @throws IllegalArgumentException if the threshold is out of range
+     */
     public BloomFilter setThreshold(float threshold) {
-        this._threshold = threshold;
+        if (threshold < 0 || threshold >= 1) throw new IllegalArgumentException("Threshold must be in [0, 1)");
+        _threshold = threshold;
         return this;
     }
 
+    /**
+     * Sets the radius of the glow, in pixels.
+     *
+     * @param blurRadius the radius of the glow, in pixels
+     * @return this filter
+     * @throws IllegalArgumentException if the radius is negative
+     */
     public BloomFilter setBlurRadius(int blurRadius) {
-        this._blurRadius = blurRadius;
+        if (blurRadius < 0) throw new IllegalArgumentException("Blur radius must be non-negative");
+        _blurRadius = blurRadius;
         return this;
     }
 
+    /**
+     * Sets the strength of the glow, in [0, 1].
+     *
+     * @param intensity the strength of the glow, in [0, 1]
+     * @return this filter
+     */
     public BloomFilter setIntensity(float intensity) {
-        this._intensity = intensity;
+        _intensity = intensity;
         return this;
     }
 
     @Override
-    public BufferedImage apply(BufferedImage image) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-
-        int[] originalPixels = image.getRGB(0, 0, width, height, null, 0, width);
-        int[] brightPixels = new int[originalPixels.length];
-
-        // 1. שלב החילוץ (Threshold): סינון קפדני מאוד! רק פיקסלים סופר-בוהקים
-        for (int i = 0; i < originalPixels.length; i++) {
-            Color c = new Color(originalPixels[i]);
-            // דרך בטוחה יותר לחלץ אורות חזקים - בדיקה אם כל הערוצים גבוהים, או Luma קיצוני
-            float luma = getLuma(originalPixels[i]);
-            if (luma > _threshold || (c.getRed() > 240 && c.getGreen() > 240 && c.getBlue() > 240)) {
-                // חילוץ הפיקסל, אך החסרת הסף כדי לשמור רק על האור ש"זולג" מעליו
+    protected int[] process(int[] pixels, int width, int height) {
+        int[] bright = new int[pixels.length];
+        for (int i = 0; i < pixels.length; i++) {
+            float luma = luma(pixels[i]);
+            if (luma > _threshold) {
+                // Keep only the part of the light above the threshold, so the halo fades in smoothly
                 float factor = (luma - _threshold) / (1.0f - _threshold);
-                int r = (int)(c.getRed() * factor);
-                int g = (int)(c.getGreen() * factor);
-                int b = (int)(c.getBlue() * factor);
-                brightPixels[i] = new Color(r, g, b).getRGB();
-            } else {
-                brightPixels[i] = 0; // שחור
+                int p = pixels[i];
+                bright[i] = (int) (red(p) * factor) << 16 | (int) (green(p) * factor) << 8 | (int) (blue(p) * factor);
             }
         }
 
-        // 2. שלב הטשטוש (Gaussian/Box Blur)
-        int[] blurredHorizontally = applyHorizontalBlur(brightPixels, width, height, _blurRadius);
-        int[] fullyBlurred = applyVerticalBlur(blurredHorizontally, width, height, _blurRadius);
-
-        // 3. שלב החיבור החכם (Screen Blending) כדי למנוע שריפה
-        int[] resultPixels = new int[originalPixels.length];
-        for (int i = 0; i < originalPixels.length; i++) {
-            resultPixels[i] = screenBlend(originalPixels[i], fullyBlurred[i], _intensity);
-        }
-
-        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-        result.setRGB(0, 0, width, height, resultPixels, 0, width);
-        return result;
-    }
-
-    private int[] applyHorizontalBlur(int[] pixels, int width, int height, int radius) {
+        int[] glow = Pixels.boxBlur(bright, width, height, _blurRadius);
         int[] result = new int[pixels.length];
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                result[y * width + x] = computeAverage(pixels, x, y, width, height, radius, true);
-            }
-        }
+        for (int i = 0; i < pixels.length; i++) result[i] = screenBlend(pixels[i], glow[i]);
         return result;
-    }
-
-    private int[] applyVerticalBlur(int[] pixels, int width, int height, int radius) {
-        int[] result = new int[pixels.length];
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                result[y * width + x] = computeAverage(pixels, x, y, width, height, radius, false);
-            }
-        }
-        return result;
-    }
-
-    private int computeAverage(int[] pixels, int x, int y, int width, int height, int radius, boolean horizontal) {
-        int sumR = 0, sumG = 0, sumB = 0;
-        int count = 0;
-
-        for (int i = -radius; i <= radius; i++) {
-            int currentX = horizontal ? x + i : x;
-            int currentY = horizontal ? y : y + i;
-
-            if (currentX >= 0 && currentX < width && currentY >= 0 && currentY < height) {
-                int color = pixels[currentY * width + currentX];
-                sumR += (color >> 16) & 0xFF;
-                sumG += (color >> 8) & 0xFF;
-                sumB += color & 0xFF;
-                count++;
-            }
-        }
-
-        if (count == 0) return 0;
-        return new Color(sumR / count, sumG / count, sumB / count).getRGB();
     }
 
     /**
-     * פונקציית Screen Blend מונעת שריפת צבעים (לוקחת בחשבון את הצבע המקורי).
-     * הנוסחה: 1 - (1 - a) * (1 - b)
+     * Blends the glow into a pixel with the screen formula.
+     *
+     * @param original the original pixel
+     * @param glow     the glow pixel
+     * @return the blended pixel
      */
-    private int screenBlend(int originalColor, int bloomColor, float intensity) {
-        int oR = (originalColor >> 16) & 0xFF;
-        int oG = (originalColor >> 8) & 0xFF;
-        int oB = originalColor & 0xFF;
-
-        int bR = (bloomColor >> 16) & 0xFF;
-        int bG = (bloomColor >> 8) & 0xFF;
-        int bB = bloomColor & 0xFF;
-
-        // החלת העוצמה על ההילה
-        bR = (int)(bR * intensity);
-        bG = (int)(bG * intensity);
-        bB = (int)(bB * intensity);
-
-        // Screen Blend Formula
-        int r = 255 - (((255 - oR) * (255 - bR)) / 255);
-        int g = 255 - (((255 - oG) * (255 - bG)) / 255);
-        int b = 255 - (((255 - oB) * (255 - bB)) / 255);
-
-        return new Color(r, g, b).getRGB();
+    private int screenBlend(int original, int glow) {
+        return screen(red(original), (int) (red(glow) * _intensity)) << 16
+                | screen(green(original), (int) (green(glow) * _intensity)) << 8
+                | screen(blue(original), (int) (blue(glow) * _intensity));
     }
 
-    private float getLuma(int rgb) {
-        int r = (rgb >> 16) & 0xFF;
-        int g = (rgb >> 8) & 0xFF;
-        int b = rgb & 0xFF;
-        return (r * 0.299f + g * 0.587f + b * 0.114f) / 255.0f;
+    /**
+     * Screen-blends two channel values.
+     *
+     * @param a the first channel value
+     * @param b the second channel value
+     * @return the screen blend of the two values
+     */
+    private static int screen(int a, int b) {
+        return 255 - (255 - a) * (255 - b) / 255;
     }
 }

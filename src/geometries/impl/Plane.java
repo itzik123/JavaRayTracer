@@ -1,6 +1,10 @@
 package geometries.impl;
 
+import static primitives.Util.alignZero;
+import static primitives.Util.isZero;
+
 import geometries.api.Geometry;
+import primitives.AABB;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
@@ -8,51 +12,43 @@ import primitives.Vector;
 import java.util.List;
 import java.util.Objects;
 
-import static geometries.api.Intersectable.Intersection;
-
-import static primitives.Util.alignZero;
-import static primitives.Util.isZero;
-
 /**
- * Plane class represents the plane witch we will use in polygons
+ * An infinite plane, defined by a point on it and a unit normal.
+ *
  * @author ityy35-bit
  */
 public class Plane extends Geometry {
-    /**
-     * point on the plane
-     */
+
+    /** A reference point on the plane. */
     private final Point _point;
 
-    /**
-     * normal vector to represent the plane
-     */
+    /** The unit normal of the plane. */
     private final Vector _normal;
 
     /**
-     * Constructor to initialize a plane with a point and a normal vector.
-     * @param p1 first point on the plane
-     * @param p2 second point on the plane
-     * @param p3 third point on the plane
+     * Creates the plane through three points.
+     *
+     * @param p1 the first point, used as the reference point
+     * @param p2 the second point
+     * @param p3 the third point
+     * @throws IllegalArgumentException if two points coincide or all three are collinear
      */
-    public Plane(Point p1, Point p2, Point p3){
+    public Plane(Point p1, Point p2, Point p3) {
         _point = p1;
         _normal = p2.subtract(p1).crossProduct(p3.subtract(p1)).normalize();
     }
 
     /**
-     * Constructor to initialize a plane with a point and a normal vector.
-     * @param point set the point
-     * @param normal set the normal vector
+     * Creates a plane from a point and a normal.
+     *
+     * @param point  a point on the plane
+     * @param normal a normal to the plane (normalized by the constructor)
      */
-     public Plane(Point point, Vector normal){
+    public Plane(Point point, Vector normal) {
         _point = point;
         _normal = normal.normalize();
-     }
+    }
 
-    /**
-     * @param point normal on the point
-     * @return the normal
-     */
     @Override
     public Vector getNormal(Point point) {
         return _normal;
@@ -60,38 +56,38 @@ public class Plane extends Geometry {
 
     @Override
     protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
-        if (_point.equals(ray.origin()) || isZero(_normal.dotProduct(ray.direction()))) {
-            return null;
-        }
-        double t = alignZero(_normal.dotProduct(_point.subtract(ray.origin())) / _normal.dotProduct(ray.direction()));
-        if (alignZero(t) <= 0 || alignZero(t - maxDistance) > 0) {
-            return null;
-        }
-        return List.of(new Intersection(this, ray.getPoint(t)));
+        // A ray starting on the reference point, or parallel to the plane, cannot cross it
+        if (_point.equals(ray.origin())) return null;
+        double nv = _normal.dotProduct(ray.direction());
+        if (isZero(nv)) return null;
+
+        double t = alignZero(_normal.dotProduct(_point.subtract(ray.origin())) / nv);
+        return t <= 0 || alignZero(t - maxDistance) > 0 ? null : List.of(new Intersection(this, ray.getPoint(t)));
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @return {@code null} - a plane is unbounded
+     */
     @Override
-    protected primitives.AABB createBoundingBox() {
-        // גופים אינסופיים לא תוחמים בקופסה סופית. יטופלו בנפרד מחוץ לרשת הווקסלים.
+    protected AABB createBoundingBox() {
         return null;
     }
 
     @Override
     public String toString() {
-        return "Plane: point: " + _point.toString() + " normal: " + _normal.toString();
+        return "Plane: point: " + _point + " normal: " + _normal;
     }
 
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        return _normal.equals(((Plane) obj)._normal) && _point.equals(((Plane) obj)._point);
+        return obj instanceof Plane other && _normal.equals(other._normal) && _point.equals(other._point);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(_point, _normal);
     }
-
-
 }

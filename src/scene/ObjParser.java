@@ -6,177 +6,310 @@ import geometries.impl.Triangle;
 import primitives.Color;
 import primitives.Material;
 import primitives.Point;
-import primitives.Vector;
 import primitives.Texture;
 import primitives.UV;
+import primitives.Vector;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
+/**
+ * Loads a triangle mesh from a Wavefront OBJ file, with its MTL materials and textures.
+ * <p>
+ * Supported statements are {@code v}, {@code vt}, {@code f} (any polygon, fan-triangulated,
+ * with absolute or negative relative indices), {@code mtllib} and {@code usemtl}. Faces with
+ * texture coordinates and a textured material become {@link TexturedTriangle}s; all others become
+ * plain {@link Triangle}s. Degenerate faces are skipped.
+ * <p>
+ * The parser is configured fluently before calling {@link #parse(String)}:
+ *
+ * <pre>{@code
+ * Geometries model = new ObjParser().setScale(40).setOffset(new Vector(0, -10, 0)).parse("models/desk.obj");
+ * }</pre>
+ *
+ * @author itzik123
+ */
 public class ObjParser {
 
+    /** Separates the tokens of a statement. */
+    private static final Pattern WHITESPACE = Pattern.compile("\\s+");
+
+    /** The material of faces that have no MTL material. */
     private Material _defaultMaterial = new Material().setKd(0.5).setKs(0.5).setShininess(30);
+    /** The emission of faces that have no MTL material. */
     private Color _defaultEmission = Color.BLACK;
+    /** The uniform scale applied to the vertices. */
+    private double _scale = 1;
+    /** The translation applied to the vertices after scaling, or {@code null}. */
+    private Vector _offset;
+    /** Textured materials whose faces get texture coordinates by planar projection. */
+    private final Set<String> _planarUvMaterials = new HashSet<>();
 
-    public ObjParser setMaterial(Material material) { this._defaultMaterial = material; return this; }
-    public ObjParser setEmission(Color emission) { this._defaultEmission = emission; return this; }
-
-    public Geometries parse(String filePath) {
-        return parse(filePath, null);
+    /** Creates a parser with a default material, no emission and no transformation. */
+    public ObjParser() {
     }
 
-    public Geometries parse(String filePath, Vector offset) {
-        Geometries modelGeometries = new Geometries();
+    /**
+     * Sets the material of faces that have no MTL material.
+     *
+     * @param material the material of faces that have no MTL material
+     * @return this parser
+     */
+    public ObjParser setMaterial(Material material) {
+        _defaultMaterial = material;
+        return this;
+    }
 
-        List<Point> vertices = new ArrayList<>();
-        vertices.add(new Point(0, 0, 0));
+    /**
+     * Sets the emission of faces that have no MTL material.
+     *
+     * @param emission the emission of faces that have no MTL material
+     * @return this parser
+     */
+    public ObjParser setEmission(Color emission) {
+        _defaultEmission = emission;
+        return this;
+    }
 
-        // רשימה סודית לשמירת קואורדינטות המספרים הגולמיים (כדי לא לשבור את הכימוס של Point)
-        List<double[]> rawVertices = new ArrayList<>();
-        rawVertices.add(new double[]{0, 0, 0});
+    /**
+     * Sets the uniform scale applied to the vertices.
+     *
+     * @param scale the uniform scale applied to the vertices
+     * @return this parser
+     */
+    public ObjParser setScale(double scale) {
+        _scale = scale;
+        return this;
+    }
 
-        List<UV> uvs = new ArrayList<>();
-        uvs.add(new UV(0, 0));
+    /**
+     * Sets the translation applied to the vertices after scaling.
+     *
+     * @param offset the translation applied to the vertices after scaling
+     * @return this parser
+     */
+    public ObjParser setOffset(Vector offset) {
+        _offset = offset;
+        return this;
+    }
 
-        Map<String, ParsedMaterial> materialsMap = new HashMap<>();
-        String currentMaterialName = "None";
+    /**
+     * Makes the textures of some materials be mapped by projecting them onto the XY plane,
+     * stretched over the bounding rectangle of all the faces that use the material. Useful for
+     * flat surfaces such as screens, which exporters often leave without texture coordinates.
+     *
+     * @param materialNames the names of the materials
+     * @return this parser
+     */
+    public ObjParser setPlanarUvMaterials(String... materialNames) {
+        _planarUvMaterials.addAll(List.of(materialNames));
+        return this;
+    }
 
-        Material activeMaterial = _defaultMaterial;
-        Color activeEmission = _defaultEmission;
-        Texture activeTexture = null;
-
-        // --- תוספת לאלגוריתם הפריסה האוטומטית ---
-        List<Point[]> deferredDisplayTriangles = new ArrayList<>();
-        Texture displayTexture = null;
-        Material displayMaterial = null;
-        // ----------------------------------------
-
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+    /**
+     * Loads a model.
+     *
+     * @param filePath the path of the OBJ file
+     * @return the triangles of the model
+     * @throws SceneLoadException if the file cannot be read or is malformed
+     */
+    public Geometries parse(String filePath) {
+        File file = new File(filePath).getAbsoluteFile();
+        Session session = new Session(file.getParentFile());
+        int lineNumber = 0;
+        try (BufferedReader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8)) {
             String line;
-            while ((line = br.readLine()) != null) {
-                line = line.trim();
-                if (line.isEmpty() || line.startsWith("#")) continue;
-
-                String[] parts = line.split("\\s+");
-
-                if (parts[0].equals("mtllib")) {
-                    String mtlFileName = line.substring(7).trim();
-                    String mtlPath = new File(filePath).getParent() + File.separator + mtlFileName;
-                    materialsMap = MtlParser.parse(mtlPath);
-                }
-                else if (parts[0].equals("usemtl")) {
-                    currentMaterialName = line.substring(7).trim();
-                    if (materialsMap.containsKey(currentMaterialName)) {
-                        ParsedMaterial pm = materialsMap.get(currentMaterialName);
-                        activeEmission = pm.diffuseColor;
-                        activeMaterial = pm.material;
-                        activeTexture = pm.texture;
-                    }
-                }
-                else if (parts[0].equals("v")) {
-                    double x = Double.parseDouble(parts[1]);
-                    double y = Double.parseDouble(parts[2]);
-                    double z = Double.parseDouble(parts[3]);
-
-                    if (offset != null) {
-                        x += offset.getX();
-                        y += offset.getY();
-                        z += offset.getZ();
-                    }
-
-                    rawVertices.add(new double[]{x, y, z});
-                    vertices.add(new Point(x, y, z));
-                }
-                else if (parts[0].equals("vt")) {
-                    uvs.add(new UV(Double.parseDouble(parts[1]), Double.parseDouble(parts[2])));
-                }
-                else if (parts[0].equals("f")) {
-                    List<Integer> vIndices = new ArrayList<>();
-                    List<Integer> vtIndices = new ArrayList<>();
-
-                    for (int i = 1; i < parts.length; i++) {
-                        String[] subParts = parts[i].split("/");
-                        vIndices.add(Integer.parseInt(subParts[0]));
-                        if (subParts.length > 1 && !subParts[1].isEmpty()) {
-                            vtIndices.add(Integer.parseInt(subParts[1]));
-                        }
-                    }
-
-                    for (int i = 1; i < vIndices.size() - 1; i++) {
-                        try {
-                            Point p1 = vertices.get(vIndices.get(0));
-                            Point p2 = vertices.get(vIndices.get(i));
-                            Point p3 = vertices.get(vIndices.get(i + 1));
-
-                            // --- זיהוי מסך ללא UV ושמירתו לשלב הפריסה האוטומטית ---
-                            if (currentMaterialName.equals("Display") && activeTexture != null) {
-                                deferredDisplayTriangles.add(new Point[]{p1, p2, p3});
-                                displayTexture = activeTexture;
-                                displayMaterial = activeMaterial;
-                                continue;
-                            }
-
-                            // --- יצירת שאר חלקי הלפטופ (המקלדת, הפלסטיק וכו') ---
-                            if (activeTexture != null && vtIndices.size() >= 3) {
-                                UV uv1 = uvs.get(vtIndices.get(0));
-                                UV uv2 = uvs.get(vtIndices.get(i));
-                                UV uv3 = uvs.get(vtIndices.get(i + 1));
-
-                                TexturedTriangle tt = new TexturedTriangle(p1, p2, p3, uv1, uv2, uv3, activeTexture);
-                                tt.setMaterial(activeMaterial);
-                                modelGeometries.add(tt);
-                            } else {
-                                Triangle t = new Triangle(p1, p2, p3);
-                                t.setEmission(activeEmission);
-                                t.setMaterial(activeMaterial);
-                                modelGeometries.add(t);
-                            }
-                        } catch (IllegalArgumentException e) {
-                            // מתעלם ממשולשים פגומים
-                        }
-                    }
-                }
+            while ((line = reader.readLine()) != null) {
+                lineNumber++;
+                session.readStatement(line.trim());
             }
         } catch (IOException e) {
-            System.err.println("Failed to parse OBJ file: " + filePath);
+            throw new SceneLoadException("Cannot read model file " + filePath, e);
+        } catch (RuntimeException e) {
+            throw new SceneLoadException("Malformed model file " + filePath + " at line " + lineNumber, e);
+        }
+        session.addPlanarMappedFaces();
+        return session._model;
+    }
+
+    /**
+     * The state of loading one file.
+     */
+    private final class Session {
+        /** The directory of the model, where material files are looked up. */
+        private final File _directory;
+        /** The loaded triangles. */
+        private final Geometries _model = new Geometries();
+        /** The vertices; index 0 is a placeholder since OBJ indices start at 1. */
+        private final List<Point> _vertices = new ArrayList<>(List.of(Point.ZERO));
+        /** The texture coordinates; index 0 is a placeholder since OBJ indices start at 1. */
+        private final List<UV> _uvs = new ArrayList<>(List.of(new UV(0, 0)));
+        /** The materials of the loaded material libraries, by name. */
+        private final Map<String, ParsedMaterial> _materials = new HashMap<>();
+        /** Faces of planar-mapped materials, collected until their full extent is known. */
+        private final Map<ParsedMaterial, List<Point[]>> _planarFaces = new LinkedHashMap<>();
+
+        /** The active MTL material, or {@code null}. */
+        private ParsedMaterial _active;
+        /** The material of new faces. */
+        private Material _material = _defaultMaterial;
+        /** The emission of new untextured faces. */
+        private Color _emission = _defaultEmission;
+
+        /**
+         * Starts loading a model.
+         *
+         * @param directory the directory of the model
+         */
+        Session(File directory) {
+            _directory = directory;
         }
 
-        // --- הפעלת מנגנון Auto Planar Projection למסך ---
-        if (!deferredDisplayTriangles.isEmpty()) {
-            double minX = Double.POSITIVE_INFINITY, maxX = Double.NEGATIVE_INFINITY;
-            double minY = Double.POSITIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
+        /**
+         * Processes one statement of the OBJ file.
+         *
+         * @param line the trimmed line
+         */
+        void readStatement(String line) {
+            if (line.isEmpty() || line.startsWith("#")) return;
+            String[] parts = WHITESPACE.split(line);
+            switch (parts[0]) {
+                case "v" -> _vertices.add(transform(
+                        Double.parseDouble(parts[1]), Double.parseDouble(parts[2]), Double.parseDouble(parts[3])));
+                case "vt" -> _uvs.add(new UV(Double.parseDouble(parts[1]), Double.parseDouble(parts[2])));
+                case "f" -> readFace(parts);
+                case "mtllib" -> _materials.putAll(MtlParser.parse(new File(_directory, MtlParser.restOf(line)).getPath()));
+                case "usemtl" -> useMaterial(MtlParser.restOf(line));
+                default -> { } // normals, groups and smoothing are not needed for rendering
+            }
+        }
 
-            // 1. סריקה מהירה למציאת הגבולות המדויקים של המסך
-            for (Point[] tri : deferredDisplayTriangles) {
-                for (Point p : tri) {
-                    if (p.getX() < minX) minX = p.getX();
-                    if (p.getX() > maxX) maxX = p.getX();
-                    if (p.getY() < minY) minY = p.getY();
-                    if (p.getY() > maxY) maxY = p.getY();
+        /**
+         * Scales and translates a vertex.
+         *
+         * @param x the X coordinate in the file
+         * @param y the Y coordinate in the file
+         * @param z the Z coordinate in the file
+         * @return the vertex in scene coordinates
+         */
+        private Point transform(double x, double y, double z) {
+            x *= _scale;
+            y *= _scale;
+            z *= _scale;
+            return _offset == null ? new Point(x, y, z)
+                    : new Point(x + _offset.getX(), y + _offset.getY(), z + _offset.getZ());
+        }
+
+        /**
+         * Switches the active material. Unknown names keep the current material.
+         *
+         * @param name the material name
+         */
+        private void useMaterial(String name) {
+            ParsedMaterial material = _materials.get(name);
+            if (material == null) return;
+            _active = material;
+            _material = material.material;
+            _emission = Color.BLACK; // MTL colors are reflectances, not light sources
+        }
+
+        /**
+         * Triangulates a face as a fan around its first vertex and adds the triangles.
+         *
+         * @param parts the statement tokens, each {@code v}, {@code v/vt}, {@code v//vn} or
+         *              {@code v/vt/vn}
+         */
+        private void readFace(String[] parts) {
+            int count = parts.length - 1;
+            Point[] points = new Point[count];
+            UV[] uvs = new UV[count];
+            boolean hasUvs = true;
+            for (int i = 0; i < count; i++) {
+                String[] indices = parts[i + 1].split("/");
+                points[i] = _vertices.get(resolve(Integer.parseInt(indices[0]), _vertices.size()));
+                if (indices.length > 1 && !indices[1].isEmpty())
+                    uvs[i] = _uvs.get(resolve(Integer.parseInt(indices[1]), _uvs.size()));
+                else hasUvs = false;
+            }
+
+            Texture texture = _active == null ? null : _active.texture;
+            boolean planar = texture != null && _planarUvMaterials.contains(_active.name);
+            for (int i = 1; i < count - 1; i++) {
+                if (planar) {
+                    _planarFaces.computeIfAbsent(_active, m -> new ArrayList<>())
+                            .add(new Point[]{points[0], points[i], points[i + 1]});
+                    continue;
+                }
+                try {
+                    if (texture != null && hasUvs)
+                        _model.add(new TexturedTriangle(points[0], points[i], points[i + 1],
+                                uvs[0], uvs[i], uvs[i + 1], texture).setMaterial(_material));
+                    else
+                        _model.add(new Triangle(points[0], points[i], points[i + 1])
+                                .setEmission(_emission).setMaterial(_material));
+                } catch (IllegalArgumentException e) {
+                    // degenerate face (coincident or collinear vertices) - nothing to render
                 }
             }
-
-            double widthX = maxX - minX;
-            double heightY = maxY - minY;
-
-            // 2. יצירת המשולשים עם UV מחושב מתמטית ויחסית לגודל המסך
-            for (Point[] tri : deferredDisplayTriangles) {
-                UV uv1 = new UV((tri[0].getX() - minX) / widthX, (tri[0].getY() - minY) / heightY);
-                UV uv2 = new UV((tri[1].getX() - minX) / widthX, (tri[1].getY() - minY) / heightY);
-                UV uv3 = new UV((tri[2].getX() - minX) / widthX, (tri[2].getY() - minY) / heightY);
-
-                TexturedTriangle tt = new TexturedTriangle(tri[0], tri[1], tri[2], uv1, uv2, uv3, displayTexture);
-                tt.setMaterial(displayMaterial);
-                modelGeometries.add(tt);
-            }
         }
 
-        return modelGeometries;
+        /**
+         * Converts an OBJ index to a list index. Positive indices are absolute (1-based);
+         * negative indices count back from the last element read so far.
+         *
+         * @param index the index in the file
+         * @param size  the size of the list, including the placeholder
+         * @return the list index
+         */
+        private int resolve(int index, int size) {
+            int resolved = index < 0 ? size + index : index;
+            if (resolved <= 0 || resolved >= size) throw new IndexOutOfBoundsException("Invalid index " + index);
+            return resolved;
+        }
+
+        /**
+         * Adds the collected faces of planar-mapped materials, with texture coordinates projected
+         * from their XY extent.
+         */
+        void addPlanarMappedFaces() {
+            for (var entry : _planarFaces.entrySet()) {
+                List<Point[]> faces = entry.getValue();
+                double minX = Double.POSITIVE_INFINITY, maxX = Double.NEGATIVE_INFINITY;
+                double minY = Double.POSITIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
+                for (Point[] face : faces)
+                    for (Point p : face) {
+                        minX = Math.min(minX, p.getX());
+                        maxX = Math.max(maxX, p.getX());
+                        minY = Math.min(minY, p.getY());
+                        maxY = Math.max(maxY, p.getY());
+                    }
+                double width = maxX > minX ? maxX - minX : 1;
+                double height = maxY > minY ? maxY - minY : 1;
+
+                ParsedMaterial material = entry.getKey();
+                for (Point[] face : faces) {
+                    UV[] uvs = new UV[3];
+                    for (int i = 0; i < 3; i++)
+                        uvs[i] = new UV((face[i].getX() - minX) / width, (face[i].getY() - minY) / height);
+                    try {
+                        _model.add(new TexturedTriangle(face[0], face[1], face[2], uvs[0], uvs[1], uvs[2],
+                                material.texture).setMaterial(material.material));
+                    } catch (IllegalArgumentException e) {
+                        // degenerate face - nothing to render
+                    }
+                }
+            }
+        }
     }
 }

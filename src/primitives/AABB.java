@@ -1,132 +1,120 @@
 package primitives;
 
+import java.util.Collection;
+
 /**
- * Represents an Axis-Aligned Bounding Box (AABB) for spatial partitioning.
+ * An immutable axis-aligned bounding box, the building block of the spatial acceleration
+ * structures.
+ *
+ * @param min the corner with the smallest coordinates
+ * @param max the corner with the largest coordinates
+ * @author itzik123
  */
-public class AABB {
-    public final Point min;
-    public final Point max;
+public record AABB(Point min, Point max) {
+
+    /** Returned by {@link #findIntersectionT(Ray)} when the ray misses the box. */
+    public static final double NO_HIT = Double.NEGATIVE_INFINITY;
 
     /**
-     * Constructor for AABB.
-     * @param min the minimum point of the box (lowest x, y, z)
-     * @param max the maximum point of the box (highest x, y, z)
+     * Creates the smallest box enclosing a set of points.
+     *
+     * @param points the points to enclose (must not be empty)
+     * @return the enclosing box
      */
-    public AABB(Point min, Point max) {
-        this.min = min;
-        this.max = max;
+    public static AABB enclosing(Collection<Point> points) {
+        double minX = Double.POSITIVE_INFINITY, minY = Double.POSITIVE_INFINITY, minZ = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY, maxZ = Double.NEGATIVE_INFINITY;
+        for (Point p : points) {
+            minX = Math.min(minX, p.getX());
+            minY = Math.min(minY, p.getY());
+            minZ = Math.min(minZ, p.getZ());
+            maxX = Math.max(maxX, p.getX());
+            maxY = Math.max(maxY, p.getY());
+            maxZ = Math.max(maxZ, p.getZ());
+        }
+        return new AABB(new Point(minX, minY, minZ), new Point(maxX, maxY, maxZ));
     }
 
     /**
-     * Checks if a ray intersects this bounding box using the Slab Method.
-     * @param ray the ray to check
-     * @return true if the ray intersects the box, false otherwise
+     * Creates the smallest box enclosing this box and another one.
+     *
+     * @param other the other box, or {@code null}
+     * @return the enclosing box ({@code this} when {@code other} is {@code null})
      */
-    public boolean isIntersected(Ray ray) {
-        Point o = ray.origin();
-        Vector d = ray.direction();
-
-        double dirX = d.getX();
-        double dirY = d.getY();
-        double dirZ = d.getZ();
-
-        double origX = o.getX();
-        double origY = o.getY();
-        double origZ = o.getZ();
-
-        // בדיקה עבור ציר X
-        double tMinX = (min.getX() - origX) / dirX;
-        double tMaxX = (max.getX() - origX) / dirX;
-        if (tMinX > tMaxX) { double temp = tMinX; tMinX = tMaxX; tMaxX = temp; }
-
-        // בדיקה עבור ציר Y
-        double tMinY = (min.getY() - origY) / dirY;
-        double tMaxY = (max.getY() - origY) / dirY;
-        if (tMinY > tMaxY) { double temp = tMinY; tMinY = tMaxY; tMaxY = temp; }
-
-        // אם תחומי ה-X וה-Y לא חופפים, אין חיתוך עם הקופסה
-        if ((tMinX > tMaxY) || (tMinY > tMaxX)) return false;
-
-        // עדכון תחום החיתוך המשותף ל-X ול-Y
-        if (tMinY > tMinX) tMinX = tMinY;
-        if (tMaxY < tMaxX) tMaxX = tMaxY;
-
-        // בדיקה עבור ציר Z
-        double tMinZ = (min.getZ() - origZ) / dirZ;
-        double tMaxZ = (max.getZ() - origZ) / dirZ;
-        if (tMinZ > tMaxZ) { double temp = tMinZ; tMinZ = tMaxZ; tMaxZ = temp; }
-
-        // אם תחומי ה-(X,Y) לא חופפים עם תחום ה-Z, אין חיתוך
-        if ((tMinX > tMaxZ) || (tMinZ > tMaxX)) return false;
-
-        return true;
+    public AABB union(AABB other) {
+        if (other == null) return this;
+        return new AABB(
+                new Point(Math.min(min.getX(), other.min.getX()),
+                        Math.min(min.getY(), other.min.getY()),
+                        Math.min(min.getZ(), other.min.getZ())),
+                new Point(Math.max(max.getX(), other.max.getX()),
+                        Math.max(max.getY(), other.max.getY()),
+                        Math.max(max.getZ(), other.max.getZ())));
     }
 
     /**
-     * Calculates the distance (t) from the ray origin to the intersection point with the AABB.
-     * @param ray the ray to check
-     * @return the t value of the intersection, or Double.NEGATIVE_INFINITY if it misses.
+     * Grows the box by a margin on every side.
+     *
+     * @param margin the margin to add
+     * @return the expanded box
+     */
+    public AABB expand(double margin) {
+        return new AABB(
+                new Point(min.getX() - margin, min.getY() - margin, min.getZ() - margin),
+                new Point(max.getX() + margin, max.getY() + margin, max.getZ() + margin));
+    }
+
+    /**
+     * Finds where a ray enters the box, using the slab method: the ray is clipped against the
+     * pair of planes bounding each axis, and it hits the box if the three parameter intervals
+     * overlap in front of the origin.
+     * <p>
+     * Division by a zero direction component yields ±infinity, which the method handles
+     * naturally. The interval updates use plain comparisons rather than {@code Math.min/max} so
+     * that an undefined slab (a ray lying exactly in a slab plane) does not constrain the result.
+     *
+     * @param ray the ray
+     * @return the entry distance along the ray (0 when the origin is inside the box),
+     *         or {@link #NO_HIT} if the ray misses the box
      */
     public double findIntersectionT(Ray ray) {
         Point o = ray.origin();
         Vector d = ray.direction();
 
-        double tMinX = (min.getX() - o.getX()) / d.getX();
-        double tMaxX = (max.getX() - o.getX()) / d.getX();
-        if (tMinX > tMaxX) { double temp = tMinX; tMinX = tMaxX; tMaxX = temp; }
+        double tMin = (min.getX() - o.getX()) / d.getX();
+        double tMax = (max.getX() - o.getX()) / d.getX();
+        if (tMin > tMax) { double tmp = tMin; tMin = tMax; tMax = tmp; }
 
         double tMinY = (min.getY() - o.getY()) / d.getY();
         double tMaxY = (max.getY() - o.getY()) / d.getY();
-        if (tMinY > tMaxY) { double temp = tMinY; tMinY = tMaxY; tMaxY = temp; }
+        if (tMinY > tMaxY) { double tmp = tMinY; tMinY = tMaxY; tMaxY = tmp; }
 
-        if ((tMinX > tMaxY) || (tMinY > tMaxX)) return Double.NEGATIVE_INFINITY;
-
-        if (tMinY > tMinX) tMinX = tMinY;
-        if (tMaxY < tMaxX) tMaxX = tMaxY;
+        if (tMin > tMaxY || tMinY > tMax) return NO_HIT;
+        if (tMinY > tMin) tMin = tMinY;
+        if (tMaxY < tMax) tMax = tMaxY;
 
         double tMinZ = (min.getZ() - o.getZ()) / d.getZ();
         double tMaxZ = (max.getZ() - o.getZ()) / d.getZ();
-        if (tMinZ > tMaxZ) { double temp = tMinZ; tMinZ = tMaxZ; tMaxZ = temp; }
+        if (tMinZ > tMaxZ) { double tmp = tMinZ; tMinZ = tMaxZ; tMaxZ = tmp; }
 
-        if ((tMinX > tMaxZ) || (tMinZ > tMaxX)) return Double.NEGATIVE_INFINITY;
+        if (tMin > tMaxZ || tMinZ > tMax) return NO_HIT;
+        if (tMinZ > tMin) tMin = tMinZ;
+        if (tMaxZ < tMax) tMax = tMaxZ;
 
-        if (tMinZ > tMinX) tMinX = tMinZ;
-        if (tMaxZ < tMaxX) tMaxX = tMaxZ;
-
-        if (tMaxX < 0) return Double.NEGATIVE_INFINITY; // הקופסה נמצאת מאחורי הקרן
-        return tMinX < 0 ? 0 : tMinX; // אם ראשית הקרן בתוך הקופסה, המרחק לכניסה הוא 0
+        if (tMax < 0) return NO_HIT; // the box is behind the ray
+        return tMin < 0 ? 0 : tMin;
     }
 
     /**
-     * Checks if this bounding box overlaps with another bounding box.
-     * @param other the other AABB to check against
-     * @return true if the boxes overlap, false otherwise
+     * Checks whether this box overlaps another box (touching counts as overlapping).
+     *
+     * @param other the other box
+     * @return {@code true} if the boxes overlap
      */
     public boolean isOverlapping(AABB other) {
-        if (other == null) return false;
-
-        boolean overlapX = this.min.getX() <= other.max.getX() && this.max.getX() >= other.min.getX();
-        boolean overlapY = this.min.getY() <= other.max.getY() && this.max.getY() >= other.min.getY();
-        boolean overlapZ = this.min.getZ() <= other.max.getZ() && this.max.getZ() >= other.min.getZ();
-
-        return overlapX && overlapY && overlapZ;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        AABB other = (AABB) obj;
-        return min.equals(other.min) && max.equals(other.max);
-    }
-
-    @Override
-    public int hashCode() {
-        return java.util.Objects.hash(min, max);
-    }
-
-    @Override
-    public String toString() {
-        return "AABB [min=" + min + ", max=" + max + "]";
+        return other != null
+                && min.getX() <= other.max.getX() && max.getX() >= other.min.getX()
+                && min.getY() <= other.max.getY() && max.getY() >= other.min.getY()
+                && min.getZ() <= other.max.getZ() && max.getZ() >= other.min.getZ();
     }
 }

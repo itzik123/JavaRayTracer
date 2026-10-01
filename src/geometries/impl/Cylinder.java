@@ -1,151 +1,133 @@
 package geometries.impl;
 
+import static primitives.Util.alignZero;
+import static primitives.Util.isZero;
+
+import primitives.AABB;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
-import static geometries.api.Intersectable.Intersection;
-
-import static primitives.Util.alignZero;
-import static primitives.Util.isZero;
-
 /**
- * Represents a finite cylinder in 3D space, which is a tube with a specific height.
+ * A finite, capped cylinder: a tube cut to a height, closed by two disk bases.
+ *
  * @author ityy35-bit
  */
 public class Cylinder extends Tube {
 
-    /**
-     * The height of the cylinder.
-     */
+    /** The height of the cylinder along its axis. */
     private final double _height;
-
-    /**
-     * The plane containing the bottom base of the cylinder.
-     */
+    /** The plane of the bottom base (through the axis origin). */
     private final Plane _bottomBase;
-
-    /**
-     * The plane containing the top base of the cylinder.
-     */
+    /** The plane of the top base. */
     private final Plane _topBase;
+    /** The center of the top base. */
+    private final Point _topCenter;
+    /** The outward normal of the bottom base. */
+    private final Vector _bottomNormal;
 
     /**
-     * Constructor to initialize a cylinder with a radius, central axis ray, and height.
+     * Creates a cylinder.
+     *
      * @param radius the radius of the cylinder
-     * @param axis   the central axis ray of the cylinder
+     * @param axis   the axis; its origin is the center of the bottom base
      * @param height the height of the cylinder
+     * @throws IllegalArgumentException if the height is not positive
      */
     public Cylinder(double radius, Ray axis, double height) {
         super(radius, axis);
+        if (height <= 0) throw new IllegalArgumentException("Cylinder height must be positive");
         _height = height;
-
-        Vector v = axis.direction();
-        Point p0 = axis.origin();
-
-        _bottomBase = new Plane(p0, v);
-
-        Point p1 = axis.getPoint(height);
-        _topBase = new Plane(p1, v);
+        _topCenter = axis.getPoint(height);
+        _bottomBase = new Plane(axis.origin(), axis.direction());
+        _topBase = new Plane(_topCenter, axis.direction());
+        _bottomNormal = axis.direction().scale(-1);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Points on a base, including its rim, get the base normal; all other points get the side
+     * normal of the tube.
+     */
     @Override
     public Vector getNormal(Point point) {
-        if (point.equals(_axis.origin())){
-            return _axis.direction().scale(-1);
-        } else if (point.equals(_axis.getPoint(_height))) {
-            return _axis.direction();
-        } else if (isZero(point.subtract(_axis.origin()).dotProduct(_axis.direction()))) {
-            return _axis.direction().scale(-1);
-        } else if (isZero(point.subtract(_axis.getPoint(_height)).dotProduct(_axis.direction()))) {
-            return _axis.direction();
-        }
+        double axial = axialDistance(point);
+        if (isZero(axial)) return _bottomNormal;
+        if (isZero(axial - _height)) return _axis.direction();
         return super.getNormal(point);
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Combines three surfaces: the side of the tube strictly between the bases, and the two
+     * disks including their rims (so a hit on a rim is reported once). The result is sorted by
+     * distance from the ray origin.
+     */
     @Override
     protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance) {
-        List<Intersection> intersections = null;
-        List<Intersection> tubeIntersections = super.calcIntersectionsHelper(ray, maxDistance);
+        List<Intersection> intersections = new ArrayList<>(2);
 
-        if (tubeIntersections != null) {
-            for (Intersection inter : tubeIntersections) {
-                Point p = inter.point;
-                double t = alignZero(_axis.direction().dotProduct(p.subtract(_axis.origin())));
-                if (t > 0 && t < _height) {
-                    if (intersections == null) intersections = new ArrayList<>();
-                    intersections.add(inter);
-                }
-                else if (isZero(t) || isZero(t - _height)) {
-                    if (!isZero(ray.direction().dotProduct(_axis.direction()))) {
-                        if (intersections == null) intersections = new ArrayList<>();
-                        intersections.add(inter);
-                    }
-                }
+        var sideIntersections = super.calcIntersectionsHelper(ray, maxDistance);
+        if (sideIntersections != null)
+            for (Intersection intersection : sideIntersections) {
+                double axial = alignZero(axialDistance(intersection.point));
+                if (axial > 0 && alignZero(axial - _height) < 0) intersections.add(intersection);
             }
-        }
 
-        List<Point> bottomBaseIntersection = _bottomBase.findIntersections(ray);
-        if (bottomBaseIntersection != null) {
-            Point p = bottomBaseIntersection.getFirst();
-            if (alignZero(p.distanceSquared(_axis.origin()) - _radius * _radius) <= 0 &&
-                    alignZero(p.distance(ray.origin()) - maxDistance) <= 0) {
-                if (intersections == null) {
-                    intersections = new ArrayList<>();
-                }
-                intersections.add(new Intersection(this, p));
-            }
-        }
+        addBaseIntersection(_bottomBase, _axis.origin(), ray, maxDistance, intersections);
+        addBaseIntersection(_topBase, _topCenter, ray, maxDistance, intersections);
 
-        List<Point> topBaseIntersection = _topBase.findIntersections(ray);
-        if (topBaseIntersection != null) {
-            Point p = topBaseIntersection.getFirst();
-            Point topCenter = _axis.getPoint(_height);
-            if (alignZero(p.distanceSquared(topCenter) - _radius * _radius) <= 0 &&
-                    alignZero(p.distance(ray.origin()) - maxDistance) <= 0) {
-                if (intersections == null) {
-                    intersections = new ArrayList<>();
-                }
-                intersections.add(new Intersection(this, p));
-            }
-        }
-
-        if (intersections == null) {
-            return null;
-        }
-
-        if (intersections.size() == 2) {
-            Intersection i1 = intersections.get(0);
-            Intersection i2 = intersections.get(1);
-            if (i1.point.equals(i2.point)){
-                return List.of(intersections.getFirst());
-            }
-            return (alignZero(i1.point.distanceSquared(ray.origin()) - i2.point.distanceSquared(ray.origin())) > 0) ? List.of(i2, i1) : List.of(i1, i2);
-        }
-
-        return List.of(intersections.get(0));
+        if (intersections.isEmpty()) return null;
+        Point origin = ray.origin();
+        intersections.sort(Comparator.comparingDouble(i -> i.point.distanceSquared(origin)));
+        return List.copyOf(intersections);
     }
 
+    /**
+     * Adds the intersection of a ray with one base disk, if there is one.
+     *
+     * @param base          the plane of the base
+     * @param center        the center of the base
+     * @param ray           the ray
+     * @param maxDistance   the maximum distance of an intersection from the ray origin
+     * @param intersections the list to add the intersection to
+     */
+    private void addBaseIntersection(Plane base, Point center, Ray ray, double maxDistance,
+                                     List<Intersection> intersections) {
+        var planeIntersections = base.calcIntersections(ray, maxDistance);
+        if (planeIntersections == null) return;
+        Point point = planeIntersections.getFirst().point;
+        if (alignZero(point.distanceSquared(center) - _radiusSquared) <= 0)
+            intersections.add(new Intersection(this, point));
+    }
+
+    /**
+     * {@inheritDoc}
+     * <p>
+     * The two base disks are bounded exactly: along each coordinate axis, a disk with unit normal
+     * {@code d} extends {@code r * sqrt(1 - d_i²)} from its center.
+     */
     @Override
-    protected primitives.AABB createBoundingBox() {
-        Point p0 = _axis.origin();
-        Point p1 = _axis.getPoint(_height);
-        double r = _radius;
-
-        // מציאת ערכי המינימום והמקסימום בין שתי נקודות המרכז, והרחבה ברדיוס
-        double minX = Math.min(p0.getX(), p1.getX()) - r;
-        double minY = Math.min(p0.getY(), p1.getY()) - r;
-        double minZ = Math.min(p0.getZ(), p1.getZ()) - r;
-
-        double maxX = Math.max(p0.getX(), p1.getX()) + r;
-        double maxY = Math.max(p0.getY(), p1.getY()) + r;
-        double maxZ = Math.max(p0.getZ(), p1.getZ()) + r;
-
-        return new primitives.AABB(new Point(minX, minY, minZ), new Point(maxX, maxY, maxZ));
+    protected AABB createBoundingBox() {
+        Vector d = _axis.direction();
+        Point bottom = _axis.origin();
+        double ex = _radius * Math.sqrt(Math.max(0, 1 - d.getX() * d.getX()));
+        double ey = _radius * Math.sqrt(Math.max(0, 1 - d.getY() * d.getY()));
+        double ez = _radius * Math.sqrt(Math.max(0, 1 - d.getZ() * d.getZ()));
+        return new AABB(
+                new Point(Math.min(bottom.getX(), _topCenter.getX()) - ex,
+                        Math.min(bottom.getY(), _topCenter.getY()) - ey,
+                        Math.min(bottom.getZ(), _topCenter.getZ()) - ez),
+                new Point(Math.max(bottom.getX(), _topCenter.getX()) + ex,
+                        Math.max(bottom.getY(), _topCenter.getY()) + ey,
+                        Math.max(bottom.getZ(), _topCenter.getZ()) + ez));
     }
 
     @Override
@@ -155,10 +137,7 @@ public class Cylinder extends Tube {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Cylinder other = (Cylinder) obj;
-        return super.equals(other) && isZero(_height - other._height);
+        return super.equals(obj) && isZero(_height - ((Cylinder) obj)._height);
     }
 
     @Override

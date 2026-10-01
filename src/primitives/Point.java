@@ -1,33 +1,30 @@
 package primitives;
 
-import java.util.Objects;
-
 /**
- * Represents a point in 3D space.
+ * An immutable point in 3D Cartesian space.
+ *
  * @author itzik123
  */
 public class Point {
 
-    /**
-     * The 3D coordinates of the point.
-     */
+    /** The origin (0,0,0). */
+    public static final Point ZERO = new Point(Double3.ZERO);
+
+    /** The coordinates of the point. */
     protected final Double3 _xyz;
 
     /**
-     * The origin point (0,0,0).
-     */
-    public static final Point ZERO = new Point(Double3.ZERO);
-
-    /**
-     * Constructor to initialize a Point based on a Double3 object.
-     * @param xyz the 3D coordinates
+     * Creates a point from a coordinates triad.
+     *
+     * @param xyz the coordinates
      */
     public Point(Double3 xyz) {
         _xyz = xyz;
     }
 
     /**
-     * Constructor to initialize a Point with individual coordinates.
+     * Creates a point from its coordinates.
+     *
      * @param x the X coordinate
      * @param y the Y coordinate
      * @param z the Z coordinate
@@ -37,66 +34,80 @@ public class Point {
     }
 
     /**
-     * @return The X coordinate of the point
+     * Returns the X coordinate.
+     *
+     * @return the X coordinate
      */
     public double getX() {
-        return _xyz._d1(); // או _d1() בהתאם למימוש שלך ב-Double3
+        return _xyz._d1();
     }
 
     /**
-     * @return The Y coordinate of the point
+     * Returns the Y coordinate.
+     *
+     * @return the Y coordinate
      */
     public double getY() {
         return _xyz._d2();
     }
 
     /**
-     * @return The Z coordinate of the point
+     * Returns the Z coordinate.
+     *
+     * @return the Z coordinate
      */
     public double getZ() {
         return _xyz._d3();
     }
+
     /**
-     * Subtracts a point from this point to create a vector.
-     * @param other the point to subtract
-     * @return a new vector from the other point to this point
+     * Creates the vector pointing from another point to this point.
+     *
+     * @param other the start point of the vector
+     * @return the vector {@code this - other}
+     * @throws IllegalArgumentException if the points coincide (zero vector)
      */
     public Vector subtract(Point other) {
         return new Vector(_xyz.subtract(other._xyz));
     }
 
     /**
-     * Adds a vector to this point to create a new point.
-     * @param vector the vector to add
-     * @return a new point resulting from the addition
+     * Moves this point by a vector.
+     *
+     * @param vector the displacement
+     * @return the displaced point
      */
     public Point add(Vector vector) {
         return new Point(_xyz.add(vector._xyz));
     }
 
     /**
-     * Calculates the squared distance between this point and another point.
-     * @param other the other point to calculate the distance to
-     * @return the squared distance between the two points
+     * Calculates the squared distance to another point - cheaper than {@link #distance(Point)}
+     * when only comparisons are needed.
+     *
+     * @param other the other point
+     * @return the squared distance
      */
     public double distanceSquared(Point other) {
-        Double3 vec = _xyz.subtract(other._xyz);
-        Double3 squared = vec.product(vec);
-        return squared._d1() + squared._d2() + squared._d3(); // We use a temporary variable to reduce duplication multiplication calculations
+        double dx = _xyz._d1() - other._xyz._d1();
+        double dy = _xyz._d2() - other._xyz._d2();
+        double dz = _xyz._d3() - other._xyz._d3();
+        return dx * dx + dy * dy + dz * dz;
     }
 
     /**
-     * Calculates the distance between this point and another point.
-     * @param other the other point to calculate the distance to
-     * @return the distance between the two points
+     * Calculates the distance to another point.
+     *
+     * @param other the other point
+     * @return the distance
      */
     public double distance(Point other) {
-        return Math.sqrt(this.distanceSquared(other));
+        return Math.sqrt(distanceSquared(other));
     }
 
     @Override
     public String toString() {
-        return "" + _xyz;
+        return String.valueOf(_xyz);
     }
 
     @Override

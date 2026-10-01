@@ -1,72 +1,71 @@
 package geometries.impl;
 
-import geometries.impl.Triangle;
 import primitives.Color;
 import primitives.Point;
 import primitives.Texture;
 import primitives.UV;
-import primitives.Vector;
 
 /**
- * A textured extension of a mathematical Triangle.
- * Uses Barycentric coordinates to map a 3D intersection point to a 2D texture pixel.
+ * A triangle whose emission is looked up in a texture image.
+ * <p>
+ * Each vertex carries a texture coordinate. For a point on the surface, the barycentric weights
+ * of the three vertices are computed and used to interpolate the texture coordinate, and the
+ * texel at that coordinate becomes the emission color of the point.
+ *
+ * @author itzik123
  */
 public class TexturedTriangle extends Triangle {
 
-    private final Point _p1, _p2, _p3;
+    /** The texture coordinates of the three vertices. */
     private final UV _uv1, _uv2, _uv3;
+    /** The texture image. */
     private final Texture _texture;
-    private final double _totalArea; // חישוב מראש של שטח המשולש לטובת יעילות
 
-    public TexturedTriangle(Point p1, Point p2, Point p3,
-                            UV uv1, UV uv2, UV uv3,
-                            Texture texture) {
-        super(p1, p2, p3); // הגיאומטריה מנוהלת על ידי מחלקת האם!
-        this._p1 = p1;
-        this._p2 = p2;
-        this._p3 = p3;
-        this._uv1 = uv1;
-        this._uv2 = uv2;
-        this._uv3 = uv3;
-        this._texture = texture;
+    /** Dot products of the edges, precomputed for barycentric coordinates. */
+    private final double _d11, _d12, _d22, _invDenominator;
 
-        // חישוב שטח המשולש הגדול (אורך מכפלה וקטורית חלקי 2)
-        Vector v1 = _p2.subtract(_p1);
-        Vector v2 = _p3.subtract(_p1);
-        this._totalArea = v1.crossProduct(v2).length() / 2.0;
+    /**
+     * Creates a textured triangle.
+     *
+     * @param p1      the first vertex
+     * @param p2      the second vertex
+     * @param p3      the third vertex
+     * @param uv1     the texture coordinate of the first vertex
+     * @param uv2     the texture coordinate of the second vertex
+     * @param uv3     the texture coordinate of the third vertex
+     * @param texture the texture image
+     * @throws IllegalArgumentException if the vertices coincide or are collinear
+     */
+    public TexturedTriangle(Point p1, Point p2, Point p3, UV uv1, UV uv2, UV uv3, Texture texture) {
+        super(p1, p2, p3);
+        _uv1 = uv1;
+        _uv2 = uv2;
+        _uv3 = uv3;
+        _texture = texture;
+        _d11 = _e1x * _e1x + _e1y * _e1y + _e1z * _e1z;
+        _d12 = _e1x * _e2x + _e1y * _e2y + _e1z * _e2z;
+        _d22 = _e2x * _e2x + _e2y * _e2y + _e2z * _e2z;
+        _invDenominator = 1.0 / (_d11 * _d22 - _d12 * _d12);
     }
 
     /**
-     * This is where the magic happens!
-     * We override the getEmission method to return the specific pixel color
-     * based on the exact intersection point.
+     * {@inheritDoc}
+     * <p>
+     * Solves {@code point = v0 + w2 * e1 + w3 * e2} for the barycentric weights, interpolates the
+     * vertex texture coordinates with them and samples the texture.
      */
     @Override
-    public Color getEmission(Point intersectionPoint) {
-        // מציאת השטחים הפנימיים (המשקלים הבריצנטריים)
-        double w1 = calculateSubArea(intersectionPoint, _p2, _p3) / _totalArea;
-        double w2 = calculateSubArea(intersectionPoint, _p1, _p3) / _totalArea;
-        double w3 = calculateSubArea(intersectionPoint, _p1, _p2) / _totalArea;
+    public Color getEmission(Point point) {
+        double px = point.getX() - _v0x, py = point.getY() - _v0y, pz = point.getZ() - _v0z;
+        double dp1 = px * _e1x + py * _e1y + pz * _e1z;
+        double dp2 = px * _e2x + py * _e2y + pz * _e2z;
 
-        // אינטרפולציה של ה-UV בעזרת המשקלים
-        double interpolatedU = w1 * _uv1.u + w2 * _uv2.u + w3 * _uv3.u;
-        double interpolatedV = w1 * _uv1.v + w2 * _uv2.v + w3 * _uv3.v;
+        double w2 = (_d22 * dp1 - _d12 * dp2) * _invDenominator;
+        double w3 = (_d11 * dp2 - _d12 * dp1) * _invDenominator;
+        double w1 = 1 - w2 - w3;
 
-        // שאיבת הצבע מהתמונה!
-        return _texture.getColor(interpolatedU, interpolatedV);
-    }
-
-    /**
-     * פונקציית עזר לחישוב שטח של משולש פנימי בין נקודת החיתוך לשני קודקודים
-     */
-    private double calculateSubArea(Point p, Point vertexA, Point vertexB) {
-        try {
-            Vector vA = vertexA.subtract(p);
-            Vector vB = vertexB.subtract(p);
-            return vA.crossProduct(vB).length() / 2.0;
-        } catch (IllegalArgumentException e) {
-            // במקרה שנקודת החיתוך נופלת בדיוק על אחד הקצוות (וקטור אפס), השטח הוא 0
-            return 0.0;
-        }
+        return _texture.getColor(
+                w1 * _uv1.u() + w2 * _uv2.u() + w3 * _uv3.u(),
+                w1 * _uv1.v() + w2 * _uv2.v() + w3 * _uv3.v());
     }
 }

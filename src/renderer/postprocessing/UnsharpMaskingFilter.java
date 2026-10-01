@@ -1,121 +1,98 @@
 package renderer.postprocessing;
 
-import java.awt.Color;
-import java.awt.image.BufferedImage;
+import static renderer.postprocessing.Pixels.blue;
+import static renderer.postprocessing.Pixels.green;
+import static renderer.postprocessing.Pixels.luma;
+import static renderer.postprocessing.Pixels.red;
+import static renderer.postprocessing.Pixels.rgb;
 
 /**
- * Advanced Unsharp Masking (USM) Filter.
- * Now includes a Threshold parameter to protect smooth areas (like skin or skies) from noise amplification.
+ * Sharpens an image with unsharp masking: the difference between the image and a blurred copy
+ * of it isolates the fine detail, which is amplified and added back.
+ * <p>
+ * Pixels whose brightness differs from the blurred copy by less than a threshold are left
+ * untouched, so smooth areas such as skies do not get their noise amplified.
+ *
+ * @author itzik123
  */
-public class UnsharpMaskingFilter implements PostProcessFilter {
+public class UnsharpMaskingFilter extends PixelFilter {
 
+    /** The radius of the blur that defines "fine detail", in pixels. */
     private int _blurRadius = 2;
+    /** How strongly the detail is amplified. */
     private float _amount = 1.0f;
-
-    /** * סף האבחנה (0 עד 255).
-     * ערכים קטנים (כמו 5-15) ימנעו חידוד של רעש בעור חלק וישאירו רק את קצוות הריסים.
-     */
+    /** The minimum brightness difference (0-255) that gets sharpened. */
     private int _threshold = 10;
 
-    public UnsharpMaskingFilter setBlurRadius(int blurRadius) { this._blurRadius = blurRadius; return this; }
-    public UnsharpMaskingFilter setAmount(float amount) { this._amount = amount; return this; }
-    public UnsharpMaskingFilter setThreshold(int threshold) { this._threshold = threshold; return this; }
+    /** Creates an unsharp masking filter with moderate default settings. */
+    public UnsharpMaskingFilter() {
+    }
+
+    /**
+     * Sets the radius of the detail-separating blur, in pixels.
+     *
+     * @param blurRadius the radius of the detail-separating blur, in pixels
+     * @return this filter
+     * @throws IllegalArgumentException if the radius is negative
+     */
+    public UnsharpMaskingFilter setBlurRadius(int blurRadius) {
+        if (blurRadius < 0) throw new IllegalArgumentException("Blur radius must be non-negative");
+        _blurRadius = blurRadius;
+        return this;
+    }
+
+    /**
+     * Sets how strongly the detail is amplified.
+     *
+     * @param amount how strongly the detail is amplified
+     * @return this filter
+     */
+    public UnsharpMaskingFilter setAmount(float amount) {
+        _amount = amount;
+        return this;
+    }
+
+    /**
+     * Sets the minimum brightness difference (0-255) that gets sharpened.
+     *
+     * @param threshold the minimum brightness difference (0-255) that gets sharpened
+     * @return this filter
+     */
+    public UnsharpMaskingFilter setThreshold(int threshold) {
+        _threshold = threshold;
+        return this;
+    }
 
     @Override
-    public BufferedImage apply(BufferedImage image) {
-        int width = image.getWidth();
-        int height = image.getHeight();
-
-        int[] originalPixels = image.getRGB(0, 0, width, height, null, 0, width);
-        int[] blurredHorizontally = applyHorizontalBlur(originalPixels, width, height, _blurRadius);
-        int[] blurredPixels = applyVerticalBlur(blurredHorizontally, width, height, _blurRadius);
-
-        int[] resultPixels = new int[originalPixels.length];
-        for (int i = 0; i < originalPixels.length; i++) {
-            resultPixels[i] = sharpenPixel(originalPixels[i], blurredPixels[i], _amount, _threshold);
-        }
-
-        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-        result.setRGB(0, 0, width, height, resultPixels, 0, width);
-        return result;
-    }
-
-    private int sharpenPixel(int orig, int blur, float amount, int threshold) {
-        float lumaOrig = getLuma(orig);
-        float lumaBlur = getLuma(blur);
-
-        // --- מנגנון ה-Threshold (הקסם החדש!) ---
-        // בודקים האם ההבדל בבהירות גדול מהסף שהגדרנו.
-        // אם ההבדל קטן (למשל בעור חלק), נחזיר את הפיקסל המקורי ללא חידוד!
-        if (Math.abs(lumaOrig - lumaBlur) * 255.0f < threshold) {
-            return orig;
-        }
-
-        int oR = (orig >> 16) & 0xFF;
-        int oG = (orig >> 8) & 0xFF;
-        int oB = orig & 0xFF;
-
-        int bR = (blur >> 16) & 0xFF;
-        int bG = (blur >> 8) & 0xFF;
-        int bB = blur & 0xFF;
-
-        int r = (int) (oR + amount * (oR - bR));
-        int g = (int) (oG + amount * (oG - bG));
-        int b = (int) (oB + amount * (oB - bB));
-
-        r = Math.min(255, Math.max(0, r));
-        g = Math.min(255, Math.max(0, g));
-        b = Math.min(255, Math.max(0, b));
-
-        return new Color(r, g, b).getRGB();
-    }
-
-    private float getLuma(int rgb) {
-        int r = (rgb >> 16) & 0xFF;
-        int g = (rgb >> 8) & 0xFF;
-        int b = rgb & 0xFF;
-        return (r * 0.299f + g * 0.587f + b * 0.114f) / 255.0f;
-    }
-
-    // ... מתודות הטשטוש (applyHorizontalBlur, applyVerticalBlur, computeAverage) נשארות זהות לחלוטין לקוד הקודם ...
-    private int[] applyHorizontalBlur(int[] pixels, int width, int height, int radius) {
+    protected int[] process(int[] pixels, int width, int height) {
+        int[] blurred = Pixels.boxBlur(pixels, width, height, _blurRadius);
         int[] result = new int[pixels.length];
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                result[y * width + x] = computeAverage(pixels, x, y, width, height, radius, true);
-            }
-        }
+        for (int i = 0; i < pixels.length; i++) result[i] = sharpen(pixels[i], blurred[i]);
         return result;
     }
 
-    private int[] applyVerticalBlur(int[] pixels, int width, int height, int radius) {
-        int[] result = new int[pixels.length];
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                result[y * width + x] = computeAverage(pixels, x, y, width, height, radius, false);
-            }
-        }
-        return result;
+    /**
+     * Sharpens one pixel.
+     *
+     * @param original the original pixel
+     * @param blurred  the blurred pixel
+     * @return the sharpened pixel
+     */
+    private int sharpen(int original, int blurred) {
+        if (Math.abs(luma(original) - luma(blurred)) * 255.0f < _threshold) return original;
+        return rgb(amplify(red(original), red(blurred)),
+                amplify(green(original), green(blurred)),
+                amplify(blue(original), blue(blurred)));
     }
 
-    private int computeAverage(int[] pixels, int x, int y, int width, int height, int radius, boolean horizontal) {
-        int sumR = 0, sumG = 0, sumB = 0;
-        int count = 0;
-
-        for (int i = -radius; i <= radius; i++) {
-            int currentX = horizontal ? x + i : x;
-            int currentY = horizontal ? y : y + i;
-
-            if (currentX >= 0 && currentX < width && currentY >= 0 && currentY < height) {
-                int color = pixels[currentY * width + currentX];
-                sumR += (color >> 16) & 0xFF;
-                sumG += (color >> 8) & 0xFF;
-                sumB += color & 0xFF;
-                count++;
-            }
-        }
-
-        if (count == 0) return 0;
-        return new Color(sumR / count, sumG / count, sumB / count).getRGB();
+    /**
+     * Amplifies the detail of one channel.
+     *
+     * @param original the original channel value
+     * @param blurred  the blurred channel value
+     * @return the channel value with amplified detail, unclamped
+     */
+    private int amplify(int original, int blurred) {
+        return (int) (original + _amount * (original - blurred));
     }
 }

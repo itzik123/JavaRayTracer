@@ -5,27 +5,34 @@ import primitives.Point;
 import primitives.Vector;
 
 /**
- * Interface for external light sources.
+ * A light that illuminates the scene from a direction and casts shadows.
+ *
+ * @author itzik123
  */
 public interface LightSource {
-    /**
-     * Gets the light intensity at a specific point.
-     * @param p the illuminated point
-     * @return the color intensity at the point
-     */
-    public Color getIntensity(Point p);
 
     /**
-     * Gets the normalized directional vector from the light source to the illuminated point.
+     * Calculates the intensity that reaches a point, after attenuation.
+     *
      * @param p the illuminated point
-     * @return the normalized direction vector
+     * @return the intensity at the point
      */
-    public Vector getL(Point p);
+    Color getIntensity(Point p);
 
     /**
-     * Returns the distance from the light source to point p
+     * Calculates the unit direction of the light arriving at a point.
+     *
      * @param p the illuminated point
-     * @return the distance
+     * @return the unit vector from the light towards the point
+     */
+    Vector getL(Point p);
+
+    /**
+     * Calculates the distance between the light and a point; shadow rays look for occluders only
+     * within this distance.
+     *
+     * @param p the illuminated point
+     * @return the distance, or positive infinity for lights at infinity
      */
     double getDistance(Point p);
 }

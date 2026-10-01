@@ -6,40 +6,54 @@ import primitives.Point;
 import primitives.Vector;
 
 /**
- * Abstract class - A simple representation of geometry objects
+ * A single renderable shape with a surface normal, an emission color and a material.
+ *
  * @author ityy35-bit
  */
 public abstract class Geometry extends Intersectable {
 
+    /** The light emitted by the surface itself. */
     private Color _emission = Color.BLACK;
+    /** The optical properties of the surface. */
     private Material _material = new Material();
+
+    /** Creates a geometry with no emission and a default material. */
+    protected Geometry() {
+    }
+
     /**
-     * @param point normal on the point
-     * @return null unless there is override
+     * Calculates the unit normal to the surface at a point.
+     *
+     * @param point a point on the surface
+     * @return the unit normal at the point
      */
     public abstract Vector getNormal(Point point);
 
     /**
-     * Getter for the emission color of the geometry.
-     * @return the emission color
+     * Returns the color the surface emits at a point. Uniform by default; textured geometries
+     * override it to look the color up in their texture.
+     *
+     * @param point a point on the surface
+     * @return the emission color at the point
      */
     public Color getEmission(Point point) {
         return _emission;
     }
 
     /**
-     * Setter for the emission color of the geometry.
-     * Uses builder pattern / method chaining.
-     * @param emission the new emission color
-     * @return the current Geometry object
+     * Sets the uniform emission color.
+     *
+     * @param emission the uniform emission color
+     * @return this geometry
      */
     public Geometry setEmission(Color emission) {
-        this._emission = emission;
+        _emission = emission;
         return this;
     }
 
     /**
-     * Getter for the material of the geometry[cite: 442].
+     * Returns the material of the geometry.
+     *
      * @return the material of the geometry
      */
     public Material getMaterial() {
@@ -47,13 +61,13 @@ public abstract class Geometry extends Intersectable {
     }
 
     /**
-     * Setter for the material of the geometry.
-     * Uses builder pattern / method chaining[cite: 443, 448].
-     * @param material the new material
-     * @return the current Geometry object for chaining [cite: 448]
+     * Sets the material of the geometry.
+     *
+     * @param material the material of the geometry
+     * @return this geometry
      */
     public Geometry setMaterial(Material material) {
-        this._material = material;
+        _material = material;
         return this;
     }
 }
