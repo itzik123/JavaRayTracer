@@ -15,6 +15,7 @@ import primitives.Point;
  * <li>{@link PointLight#getL(Point)}</li>
  * <li>{@link PointLight#getIntensity(Point)}</li>
  * <li>{@link PointLight#getDistance(Point)}</li>
+ * <li>{@link PointLight#setSoftShadows(double, int)}</li>
  * </ul>
  * Tests follow the Equivalence Partitions (EP) and Boundary Values (BVA) methodology.
  *
@@ -77,5 +78,36 @@ class PointLightTest {
 
         // TC01: The distance from the light to a point
         assertEquals(10, LIGHT.getDistance(Point.ZERO), DELTA, "Wrong light distance");
+    }
+
+    /**
+     * Test method for {@link PointLight#setSoftShadows(double, int)}.
+     */
+    @Test
+    void testSetSoftShadows() {
+        // ============ Equivalence Partitions Tests ==============
+
+        // TC01: A light with a radius, sampled by several shadow rays
+        PointLight soft = new PointLight(INTENSITY, POSITION).setSoftShadows(5, 16);
+        assertEquals(5, soft.getRadius(), DELTA, "Wrong light radius");
+        assertEquals(16, soft.getShadowRays(), "Wrong number of shadow rays");
+
+        // =============== Boundary Values Tests ==================
+
+        // TC11: By default the light is an ideal point with hard shadows
+        assertEquals(0, LIGHT.getRadius(), DELTA, "A default light has a radius");
+        assertEquals(1, LIGHT.getShadowRays(), "A default light samples several shadow rays");
+
+        // TC12: A zero radius is allowed - hard shadows
+        assertEquals(0, new PointLight(INTENSITY, POSITION).setSoftShadows(0, 1).getRadius(), DELTA,
+                "A zero radius was not accepted");
+
+        // TC13: A negative radius
+        assertThrows(IllegalArgumentException.class, () -> new PointLight(INTENSITY, POSITION).setSoftShadows(-1, 4),
+                "A negative radius did not throw");
+
+        // TC14: No shadow rays
+        assertThrows(IllegalArgumentException.class, () -> new PointLight(INTENSITY, POSITION).setSoftShadows(5, 0),
+                "Zero shadow rays did not throw");
     }
 }

@@ -80,4 +80,35 @@ public class Triangle extends Polygon {
         double t = alignZero((_e2x * qx + _e2y * qy + _e2z * qz) / det);
         return t > 0 && alignZero(t - maxDistance) <= 0 ? List.of(new Intersection(this, ray.getPoint(t))) : null;
     }
+
+    /**
+     * The barycentric coordinates of a point: the weights of the three vertices that blend into
+     * the point, used to interpolate per-vertex data across the triangle.
+     *
+     * @param w1 the weight of the first vertex
+     * @param w2 the weight of the second vertex
+     * @param w3 the weight of the third vertex
+     */
+    protected record Barycentric(double w1, double w2, double w3) {
+    }
+
+    /**
+     * Calculates the barycentric coordinates of a point on the triangle, by solving
+     * {@code point = v0 + w2·e1 + w3·e2} in the least-squares sense.
+     *
+     * @param point a point on the triangle
+     * @return the barycentric coordinates of the point
+     */
+    protected Barycentric barycentric(Point point) {
+        double px = point.getX() - _v0x, py = point.getY() - _v0y, pz = point.getZ() - _v0z;
+        double d11 = _e1x * _e1x + _e1y * _e1y + _e1z * _e1z;
+        double d12 = _e1x * _e2x + _e1y * _e2y + _e1z * _e2z;
+        double d22 = _e2x * _e2x + _e2y * _e2y + _e2z * _e2z;
+        double dp1 = px * _e1x + py * _e1y + pz * _e1z;
+        double dp2 = px * _e2x + py * _e2y + pz * _e2z;
+        double invDenominator = 1 / (d11 * d22 - d12 * d12);
+        double w2 = (d22 * dp1 - d12 * dp2) * invDenominator;
+        double w3 = (d11 * dp2 - d12 * dp1) * invDenominator;
+        return new Barycentric(1 - w2 - w3, w2, w3);
+    }
 }

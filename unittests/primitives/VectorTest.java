@@ -2,6 +2,7 @@ package primitives;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import org.junit.jupiter.api.Test;
  * <li>{@link Vector#length()}</li>
  * <li>{@link Vector#normalize()}</li>
  * <li>{@link Vector#orthogonal()}</li>
+ * <li>{@link Vector#refract(Vector, double)}</li>
  * </ul>
  * Tests follow the Equivalence Partitions (EP) and Boundary Values (BVA) methodology.
  *
@@ -216,5 +218,41 @@ class VectorTest {
         // TC11: A vector along the X axis, which cannot be crossed with the X axis itself
         Vector o2 = Vector.AXIS_X.orthogonal();
         assertEquals(0, o2.dotProduct(Vector.AXIS_X), DELTA, "orthogonal() is not orthogonal to the X axis");
+    }
+
+    /**
+     * Test method for {@link Vector#refract(Vector, double)}.
+     */
+    @Test
+    void testRefract() {
+        Vector normal = Vector.AXIS_Z;
+        double glass = 1.5;
+
+        // ============ Equivalence Partitions Tests ==============
+
+        // TC01: Entering glass at 45° bends the ray towards the normal (sin 45° / 1.5)
+        Vector entering = new Vector(1, 0, -1).normalize().refract(normal, 1 / glass);
+        double sin = Math.sqrt(0.5) / glass;
+        assertEquals(sin, entering.getX(), DELTA, "Wrong refraction into glass");
+        assertEquals(-Math.sqrt(1 - sin * sin), entering.getZ(), DELTA, "Wrong refraction into glass");
+
+        // TC02: Leaving glass at 20° bends the ray away from the normal (1.5 sin 20°)
+        double angle = Math.toRadians(20);
+        Vector leaving = new Vector(Math.sin(angle), 0, -Math.cos(angle)).refract(normal, glass);
+        sin = glass * Math.sin(angle);
+        assertEquals(sin, leaving.getX(), DELTA, "Wrong refraction out of glass");
+        assertEquals(-Math.sqrt(1 - sin * sin), leaving.getZ(), DELTA, "Wrong refraction out of glass");
+
+        // TC03: Leaving glass at 45°, beyond the critical angle - total internal reflection
+        assertNull(new Vector(1, 0, -1).normalize().refract(normal, glass), "Total internal reflection was not detected");
+
+        // =============== Boundary Values Tests ==================
+
+        // TC11: Normal incidence - the ray is not bent
+        assertEquals(new Vector(0, 0, -1), new Vector(0, 0, -1).refract(normal, 1 / glass), "Normal incidence bent the ray");
+
+        // TC12: Equal refractive indices - the ray is not bent
+        Vector oblique = new Vector(1, 0, -1).normalize();
+        assertEquals(oblique, oblique.refract(normal, 1), "Equal indices bent the ray");
     }
 }

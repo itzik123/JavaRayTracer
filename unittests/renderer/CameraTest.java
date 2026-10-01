@@ -3,6 +3,7 @@ package renderer;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 import primitives.Point;
@@ -21,6 +22,7 @@ import java.util.MissingResourceException;
  * <li>{@link Camera.Builder#build()}</li>
  * <li>{@link Camera#constructRay(int, int)}</li>
  * <li>{@link Camera#constructRays(int, int)}</li>
+ * <li>{@link Camera.Builder#setDepthOfField(double, double)}</li>
  * </ul>
  * Tests follow the Equivalence Partitions (EP) and Boundary Values (BVA) methodology.
  *
@@ -41,6 +43,8 @@ class CameraTest {
     private static final Point TARGET = new Point(0, 0, -5);
     /** The view plane distance */
     private static final double VP_DISTANCE = 10;
+    /** Delta value for accuracy when comparing double values */
+    private static final double DELTA = 1e-6;
 
     /** Message for wrong constructed rays */
     private static final String ERROR_RAY = "constructRay() returned a wrong ray";
@@ -224,5 +228,41 @@ class CameraTest {
 
         // TC12: Changing the builder does not affect a camera it already built
         assertEquals(1, withoutAntiAliasing.constructRays(1, 1).size(), "A built camera changed with its builder");
+    }
+
+    /**
+     * Test method for {@link Camera.Builder#setDepthOfField(double, double)}.
+     */
+    @Test
+    void testSetDepthOfField() {
+        Camera.Builder builder = baseBuilder().setVpSize(8, 8).setResolution(4, 4).setDirection(V_TO, V_UP);
+        // The pinhole ray of pixel (1,1) has direction (-1,1,-10), so it meets the plane at depth 20 here
+        Point focus = new Point(-2, 2, -20);
+
+        // ============ Equivalence Partitions Tests ==============
+
+        // TC01: Rays leave from random points of the aperture and all meet on the plane in focus
+        Camera lens = builder.setDepthOfField(1, 20).build();
+        for (int i = 0; i < 20; i++) {
+            Ray ray = lens.constructRays(1, 1).getFirst();
+            assertEquals(0, ray.origin().getZ(), DELTA, "A ray left the lens plane");
+            assertTrue(ray.origin().distance(LOCATION) <= 1 + DELTA, "A ray left from outside the aperture");
+            Point onFocusPlane = ray.getPoint((-20 - ray.origin().getZ()) / ray.direction().getZ());
+            assertEquals(0, onFocusPlane.distance(focus), DELTA, "A ray missed the point in focus");
+        }
+
+        // =============== Boundary Values Tests ==================
+
+        // TC11: A zero aperture is a pinhole camera
+        assertEquals(List.of(new Ray(LOCATION, new Vector(-1, 1, -10))),
+                builder.setDepthOfField(0, 20).build().constructRays(1, 1), "A zero aperture changed the ray");
+
+        // TC12: A negative aperture
+        assertThrows(IllegalArgumentException.class, () -> builder.setDepthOfField(-1, 20),
+                "A negative aperture did not throw");
+
+        // TC13: A zero focus distance
+        assertThrows(IllegalArgumentException.class, () -> builder.setDepthOfField(1, 0),
+                "A zero focus distance did not throw");
     }
 }

@@ -1,5 +1,7 @@
 package primitives;
 
+import static primitives.Util.isZero;
+
 /**
  * An immutable, non-zero vector in 3D space.
  * <p>
@@ -124,6 +126,22 @@ public class Vector extends Point {
         // Cross with the coordinate axis that is least aligned with this vector
         Vector axis = Math.abs(getX()) > AXIS_ALIGNMENT_LIMIT * length() ? AXIS_Y : AXIS_X;
         return crossProduct(axis).normalize();
+    }
+
+    /**
+     * Refracts this unit direction through a surface by Snell's law.
+     *
+     * @param normal the unit normal of the surface, on the side this direction comes from
+     * @param eta    the ratio of refractive indices, incoming side over outgoing side
+     * @return the unit refracted direction, or {@code null} on total internal reflection
+     */
+    public Vector refract(Vector normal, double eta) {
+        double cosIncident = -dotProduct(normal);
+        double sinTransmittedSquared = eta * eta * (1 - cosIncident * cosIncident);
+        if (sinTransmittedSquared > 1) return null;
+        double normalFactor = eta * cosIncident - Math.sqrt(1 - sinTransmittedSquared);
+        // The normal component vanishes only when the indices are equal, and the ray goes straight
+        return isZero(normalFactor) ? this : scale(eta).add(normal.scale(normalFactor));
     }
 
     @Override

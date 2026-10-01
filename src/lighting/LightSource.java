@@ -35,4 +35,24 @@ public interface LightSource {
      * @return the distance, or positive infinity for lights at infinity
      */
     double getDistance(Point p);
+
+    /**
+     * Returns the radius of the light's emitting disk. A light with a radius casts soft shadows,
+     * whose penumbra widens with the radius.
+     *
+     * @return the radius of the light, or 0 for an ideal light with hard shadows
+     */
+    default double getRadius() {
+        return 0;
+    }
+
+    /**
+     * Returns the number of shadow rays sampled over the light's disk at a directly visible
+     * point. Points seen in reflections and refractions sample a single random ray.
+     *
+     * @return the number of shadow rays
+     */
+    default int getShadowRays() {
+        return 1;
+    }
 }

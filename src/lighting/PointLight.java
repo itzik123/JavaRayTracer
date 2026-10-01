@@ -21,6 +21,10 @@ public class PointLight extends Light implements LightSource {
     private double _kL = 0;
     /** Quadratic attenuation factor. */
     private double _kQ = 0;
+    /** The radius of the emitting disk (0 for an ideal point). */
+    private double _radius = 0;
+    /** The number of shadow rays sampled over the disk. */
+    private int _shadowRays = 1;
 
     /**
      * Creates a point light without attenuation.
@@ -66,6 +70,22 @@ public class PointLight extends Light implements LightSource {
         return this;
     }
 
+    /**
+     * Turns the light into a disk that casts soft shadows.
+     *
+     * @param radius     the radius of the emitting disk
+     * @param shadowRays the number of shadow rays sampled over the disk
+     * @return this light
+     * @throws IllegalArgumentException if the radius is negative or the ray count is not positive
+     */
+    public PointLight setSoftShadows(double radius, int shadowRays) {
+        if (radius < 0) throw new IllegalArgumentException("Light radius must be non-negative");
+        if (shadowRays < 1) throw new IllegalArgumentException("At least one shadow ray is required");
+        _radius = radius;
+        _shadowRays = shadowRays;
+        return this;
+    }
+
     @Override
     public Color getIntensity(Point p) {
         double distanceSquared = _position.distanceSquared(p);
@@ -80,5 +100,15 @@ public class PointLight extends Light implements LightSource {
     @Override
     public double getDistance(Point p) {
         return _position.distance(p);
+    }
+
+    @Override
+    public double getRadius() {
+        return _radius;
+    }
+
+    @Override
+    public int getShadowRays() {
+        return _shadowRays;
     }
 }

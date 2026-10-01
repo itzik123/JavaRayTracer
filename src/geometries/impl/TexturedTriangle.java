@@ -21,9 +21,6 @@ public class TexturedTriangle extends Triangle {
     /** The texture image. */
     private final Texture _texture;
 
-    /** Dot products of the edges, precomputed for barycentric coordinates. */
-    private final double _d11, _d12, _d22, _invDenominator;
-
     /**
      * Creates a textured triangle.
      *
@@ -42,30 +39,19 @@ public class TexturedTriangle extends Triangle {
         _uv2 = uv2;
         _uv3 = uv3;
         _texture = texture;
-        _d11 = _e1x * _e1x + _e1y * _e1y + _e1z * _e1z;
-        _d12 = _e1x * _e2x + _e1y * _e2y + _e1z * _e2z;
-        _d22 = _e2x * _e2x + _e2y * _e2y + _e2z * _e2z;
-        _invDenominator = 1.0 / (_d11 * _d22 - _d12 * _d12);
     }
 
     /**
      * {@inheritDoc}
      * <p>
-     * Solves {@code point = v0 + w2 * e1 + w3 * e2} for the barycentric weights, interpolates the
-     * vertex texture coordinates with them and samples the texture.
+     * Interpolates the vertex texture coordinates with the barycentric weights of the point and
+     * samples the texture.
      */
     @Override
     public Color getEmission(Point point) {
-        double px = point.getX() - _v0x, py = point.getY() - _v0y, pz = point.getZ() - _v0z;
-        double dp1 = px * _e1x + py * _e1y + pz * _e1z;
-        double dp2 = px * _e2x + py * _e2y + pz * _e2z;
-
-        double w2 = (_d22 * dp1 - _d12 * dp2) * _invDenominator;
-        double w3 = (_d11 * dp2 - _d12 * dp1) * _invDenominator;
-        double w1 = 1 - w2 - w3;
-
+        Barycentric w = barycentric(point);
         return _texture.getColor(
-                w1 * _uv1.u() + w2 * _uv2.u() + w3 * _uv3.u(),
-                w1 * _uv1.v() + w2 * _uv2.v() + w3 * _uv3.v());
+                w.w1() * _uv1.u() + w.w2() * _uv2.u() + w.w3() * _uv3.u(),
+                w.w1() * _uv1.v() + w.w2() * _uv2.v() + w.w3() * _uv3.v());
     }
 }

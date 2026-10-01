@@ -52,6 +52,12 @@ public class SpotLight extends PointLight {
         return this;
     }
 
+    @Override
+    public SpotLight setSoftShadows(double radius, int shadowRays) {
+        super.setSoftShadows(radius, shadowRays);
+        return this;
+    }
+
     /**
      * Sets the beam focus exponent; larger values make the beam narrower.
      *

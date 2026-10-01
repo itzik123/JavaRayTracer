@@ -19,16 +19,18 @@ import renderer.sampling.TargetArea;
 import scene.Scene;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.MissingResourceException;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.IntStream;
 
 /**
- * A pinhole camera that renders a scene into an image.
+ * A camera that renders a scene into an image.
  * <p>
  * The camera shoots rays from its location through a view plane divided into pixels, traces
- * them, and writes the resulting colors to an image, optionally with anti-aliasing,
- * multithreading and post-processing. Cameras are immutable once built and are created with a
+ * them, and writes the resulting colors to an image, optionally with anti-aliasing, depth of
+ * field, multithreading and post-processing. Cameras are immutable once built and are created with a
  * {@link Builder}.
  *
  * @author itzik123
@@ -71,6 +73,11 @@ public class Camera implements Cloneable {
     private TargetArea _pixelSampling;
     /** The filters applied to the image before it is saved. */
     private PostProcessingEngine _postProcessing;
+
+    /** The radius of the lens aperture (0 for a pinhole camera that keeps everything sharp). */
+    private double _apertureRadius = 0;
+    /** The distance from the camera to the plane in focus, along the viewing direction. */
+    private double _focusDistance = 0;
 
     /** Maximum depth of adaptive super-sampling (0 disables it). */
     private int _adaptiveDepth = 0;
@@ -144,7 +151,7 @@ public class Camera implements Cloneable {
         if (_adaptiveDepth > 0) {
             color = AdaptiveSuperSampler.sample(getPixelCenter(xIndex, yIndex), _pixelWidth, _pixelHeight,
                     _vRight, _vUp, _adaptiveDepth, _adaptiveTolerance,
-                    point -> _rayTracer.traceRay(new Ray(_p0, point.subtract(_p0))));
+                    point -> _rayTracer.traceRay(rayThrough(point, null)));
         } else {
             List<Ray> rays = constructRays(xIndex, yIndex);
             color = Color.BLACK;
@@ -228,10 +235,57 @@ public class Camera implements Cloneable {
     public List<Ray> constructRays(int xIndex, int yIndex) {
         Point center = getPixelCenter(xIndex, yIndex);
         List<Point2D> samples = _pixelSampling.getSamplePoints();
+        List<Point2D> lens = _apertureRadius == 0 ? null : stratifiedLensSamples(samples.size());
         List<Ray> rays = new ArrayList<>(samples.size());
-        for (Point2D offset : samples)
-            rays.add(new Ray(_p0, moveOnViewPlane(center, offset.x(), offset.y()).subtract(_p0)));
+        for (int i = 0; i < samples.size(); i++) {
+            Point2D offset = samples.get(i);
+            rays.add(rayThrough(moveOnViewPlane(center, offset.x(), offset.y()), lens == null ? null : lens.get(i)));
+        }
         return rays;
+    }
+
+    /**
+     * Spreads lens samples evenly over the aperture: one jittered sample per cell of a grid,
+     * shuffled so they pair randomly with the pixel samples. Evenly spread samples give a much
+     * smoother blur than independent random ones.
+     *
+     * @param count the number of samples
+     * @return the samples, as coordinates in the unit square
+     */
+    private static List<Point2D> stratifiedLensSamples(int count) {
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        int k = (int) Math.ceil(Math.sqrt(count));
+        List<Point2D> cells = new ArrayList<>(k * k);
+        for (int i = 0; i < k; i++)
+            for (int j = 0; j < k; j++)
+                cells.add(new Point2D((i + random.nextDouble()) / k, (j + random.nextDouble()) / k));
+        Collections.shuffle(cells, random);
+        return cells.subList(0, count);
+    }
+
+    /**
+     * Constructs a primary ray through a point of the view plane. With depth of field, the ray
+     * leaves from a point of the lens aperture and passes through the point where the pinhole ray
+     * meets the plane in focus, so only objects near that plane come out sharp.
+     *
+     * @param viewPlanePoint a point of the view plane
+     * @param lensSample     the point of the aperture as coordinates in the unit square, or
+     *                       {@code null} for a random point
+     * @return the primary ray
+     */
+    private Ray rayThrough(Point viewPlanePoint, Point2D lensSample) {
+        Vector direction = viewPlanePoint.subtract(_p0);
+        if (_apertureRadius == 0) return new Ray(_p0, direction);
+
+        Point focus = _p0.add(direction.scale(_focusDistance / direction.dotProduct(_vTo)));
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        double u = lensSample == null ? random.nextDouble() : lensSample.x();
+        double v = lensSample == null ? random.nextDouble() : lensSample.y();
+        // sqrt spreads the points uniformly over the aperture rather than crowding its center
+        double r = _apertureRadius * Math.sqrt(u);
+        double theta = 2 * Math.PI * v;
+        Point origin = moveOnViewPlane(_p0, r * Math.cos(theta), r * Math.sin(theta));
+        return new Ray(origin, focus.subtract(origin));
     }
 
     @Override
@@ -437,6 +491,25 @@ public class Camera implements Cloneable {
             if (resolution < 1) throw new IllegalArgumentException("Anti-aliasing resolution must be positive");
             _antiAliasingResolution = resolution;
             _samplingPattern = pattern;
+            return this;
+        }
+
+        /**
+         * Enables depth of field, as in a photograph: objects near the plane in focus are sharp,
+         * and the blur grows with the distance from it and with the aperture. The blur is built
+         * from many rays per pixel, so it needs anti-aliasing.
+         *
+         * @param apertureRadius the radius of the lens aperture (0 disables depth of field)
+         * @param focusDistance  the distance from the camera to the plane in focus, along the
+         *                       viewing direction
+         * @return this builder
+         * @throws IllegalArgumentException if the aperture is negative or the distance not positive
+         */
+        public Builder setDepthOfField(double apertureRadius, double focusDistance) {
+            if (apertureRadius < 0) throw new IllegalArgumentException("Aperture radius must be non-negative");
+            if (focusDistance <= 0) throw new IllegalArgumentException("Focus distance must be positive");
+            _camera._apertureRadius = apertureRadius;
+            _camera._focusDistance = focusDistance;
             return this;
         }
 

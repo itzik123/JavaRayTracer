@@ -112,7 +112,7 @@ class SimpleRayTracer extends RayTracerBase {
      * @return the color at the point
      */
     private Color calcColor(Intersection intersection, int level, Double3 k) {
-        Color color = calcLocalEffects(intersection, k);
+        Color color = calcLocalEffects(intersection, level == MAX_CALC_COLOR_LEVEL, k);
         return level == 1 ? color : color.add(calcGlobalEffects(intersection, level, k));
     }
 
@@ -147,15 +147,17 @@ class SimpleRayTracer extends RayTracerBase {
     /**
      * Computes the emission plus the direct diffuse and specular lighting at a point.
      *
-     * @param intersection the hit point
-     * @param k            the accumulated attenuation along the ray path
+     * @param intersection    the hit point
+     * @param directlyVisible whether the point is seen directly rather than in a reflection or
+     *                        refraction
+     * @param k               the accumulated attenuation along the ray path
      * @return the local color contribution
      */
-    private Color calcLocalEffects(Intersection intersection, Double3 k) {
+    private Color calcLocalEffects(Intersection intersection, boolean directlyVisible, Double3 k) {
         Color color = intersection.geometry.getEmission(intersection.point);
         for (LightSource light : _scene.lights) {
             if (!preprocessLightSource(intersection, light)) continue;
-            Double3 ktr = transparency(intersection);
+            Double3 ktr = transparency(intersection, directlyVisible);
             if (ktr.product(k).isGreaterThan(MIN_CALC_COLOR_K)) {
                 Color intensity = light.getIntensity(intersection.point).scale(ktr);
                 color = color.add(intensity.scale(calcDiffuse(intersection).add(calcSpecular(intersection))));
@@ -191,17 +193,44 @@ class SimpleRayTracer extends RayTracerBase {
     }
 
     /**
-     * Calculates how much light passes from the current light source to a point. Every occluder
-     * multiplies the light by its transparency, and the search stops as soon as the light is
-     * effectively blocked.
+     * Calculates how much light passes from the current light source to a point. A light with a
+     * radius is sampled with several shadow rays to random points of its disk, and the fraction
+     * that gets through forms a soft penumbra.
      *
-     * @param intersection the hit point, with light data
+     * @param intersection    the hit point, with light data
+     * @param directlyVisible whether the point is seen directly; points seen in reflections and
+     *                        refractions sample a single ray, as their noise averages out over the
+     *                        many rays of a pixel
      * @return the transparency factor between the light and the point
      */
-    private Double3 transparency(Intersection intersection) {
-        Ray shadowRay = new Ray(intersection.point, intersection.l.scale(-1), intersection.normal);
+    private Double3 transparency(Intersection intersection, boolean directlyVisible) {
+        LightSource light = intersection.light;
+        double distance = light.getDistance(intersection.point);
+        if (light.getRadius() == 0)
+            return transmittance(new Ray(intersection.point, intersection.l.scale(-1), intersection.normal), distance);
+
+        Disk disk = Disk.facing(intersection.point.add(intersection.l.scale(-distance)), intersection.l, light.getRadius());
+        int rays = directlyVisible ? light.getShadowRays() : 1;
+        ThreadLocalRandom random = ThreadLocalRandom.current();
+        Double3 sum = Double3.ZERO;
+        for (int i = 0; i < rays; i++) {
+            Vector toLight = disk.randomPoint(random).subtract(intersection.point);
+            sum = sum.add(transmittance(new Ray(intersection.point, toLight, intersection.normal), toLight.length()));
+        }
+        return sum.scale(1.0 / rays);
+    }
+
+    /**
+     * Calculates how much light passes along a shadow ray. Every occluder multiplies the light by
+     * its transparency, and the search stops as soon as the light is effectively blocked.
+     *
+     * @param shadowRay   the ray from the point towards the light
+     * @param maxDistance the distance to the light
+     * @return the transparency factor along the ray
+     */
+    private Double3 transmittance(Ray shadowRay, double maxDistance) {
         Transmittance transmittance = new Transmittance();
-        _accelerator.traverse(shadowRay, intersection.light.getDistance(intersection.point), transmittance);
+        _accelerator.traverse(shadowRay, maxDistance, transmittance);
         return transmittance._value;
     }
 
@@ -235,11 +264,24 @@ class SimpleRayTracer extends RayTracerBase {
      */
     private Color calcGlobalEffects(Intersection intersection, int level, Double3 k) {
         Material material = intersection.material;
+        Double3 kR = material.kR;
+        Double3 kT = material.kT;
+        Ray refractionRay = null;
+        if (!kT.equals(Double3.ZERO)) {
+            refractionRay = constructRefractionRay(intersection);
+            if (material.ior != 1) {
+                // A dielectric reflects part of the light it would transmit - all of it on total internal reflection
+                double reflectance = refractionRay == null ? 1 : fresnelReflectance(intersection, refractionRay);
+                kR = kR.add(kT.scale(reflectance));
+                kT = kT.scale(1 - reflectance);
+            }
+        }
+
         Color color = Color.BLACK;
-        if (!material.kR.equals(Double3.ZERO))
-            color = color.add(calcGlobalEffect(constructReflectionRay(intersection), intersection, level, k, material.kR));
-        if (!material.kT.equals(Double3.ZERO))
-            color = color.add(calcGlobalEffect(constructRefractionRay(intersection), intersection, level, k, material.kT));
+        if (!kR.equals(Double3.ZERO))
+            color = color.add(calcGlobalEffect(constructReflectionRay(intersection), intersection, level, k, kR));
+        if (refractionRay != null && !kT.equals(Double3.ZERO))
+            color = color.add(calcGlobalEffect(refractionRay, intersection, level, k, kT));
         return color;
     }
 
@@ -255,14 +297,38 @@ class SimpleRayTracer extends RayTracerBase {
     }
 
     /**
-     * Constructs the refracted ray. Refraction indices are not modeled, so the ray continues in
-     * its original direction.
+     * Constructs the refracted ray by Snell's law. A ray arriving from outside the surface enters
+     * the material and one arriving from inside leaves it; with an index of refraction of 1 the
+     * ray continues straight.
      *
      * @param intersection the hit point
-     * @return the refracted ray
+     * @return the refracted ray, or {@code null} on total internal reflection
      */
     private Ray constructRefractionRay(Intersection intersection) {
-        return new Ray(intersection.point, intersection.v, intersection.normal);
+        double ior = intersection.material.ior;
+        if (ior == 1) return new Ray(intersection.point, intersection.v, intersection.normal);
+
+        boolean entering = intersection.vNormal < 0;
+        Vector normal = entering ? intersection.normal : intersection.normal.scale(-1);
+        Vector direction = intersection.v.refract(normal, entering ? 1 / ior : ior);
+        return direction == null ? null : new Ray(intersection.point, direction, intersection.normal);
+    }
+
+    /**
+     * Approximates the Fresnel reflectance of a dielectric with Schlick's formula: the share of
+     * light reflected rather than transmitted, which rises steeply towards grazing angles.
+     *
+     * @param intersection  the hit point
+     * @param refractionRay the refracted ray
+     * @return the reflectance, between 0 and 1
+     */
+    private static double fresnelReflectance(Intersection intersection, Ray refractionRay) {
+        double r0 = (intersection.material.ior - 1) / (intersection.material.ior + 1);
+        r0 *= r0;
+        // The angle is measured on the outer side of the surface, where the light travels in air
+        Vector outerDirection = intersection.vNormal < 0 ? intersection.v : refractionRay.direction();
+        double m = 1 - Math.abs(outerDirection.dotProduct(intersection.normal));
+        return r0 + (1 - r0) * m * m * m * m * m;
     }
 
     /**
@@ -282,13 +348,14 @@ class SimpleRayTracer extends RayTracerBase {
         if (level != MAX_CALC_COLOR_LEVEL || isZero(material.blurRadius))
             return traceSecondaryRay(idealRay, level, k, kx);
 
-        ScatterDisk disk = ScatterDisk.of(idealRay, intersection.normal, material.blurRadius);
-        if (_glossyDepth == 0) return sampleRandomBeam(disk, material.blurGlassRays, level, k, kx);
+        ScatterDisk scatter = ScatterDisk.of(idealRay, intersection.normal, material.blurRadius);
+        if (_glossyDepth == 0) return sampleRandomBeam(scatter, material.blurGlassRays, level, k, kx);
 
+        Disk disk = scatter.disk();
         double size = 2 * disk.radius();
         return AdaptiveSuperSampler.sample(disk.center(), size, size, disk.vX(), disk.vY(), _glossyDepth,
                 _glossyTolerance, target -> {
-                    Ray ray = disk.rayThrough(target);
+                    Ray ray = scatter.rayThrough(target);
                     return ray == null ? Color.BLACK : traceSecondaryRay(ray, level, k, kx);
                 });
     }
@@ -296,22 +363,19 @@ class SimpleRayTracer extends RayTracerBase {
     /**
      * Averages a beam made of the ideal ray and rays through random points of the scatter disk.
      *
-     * @param disk  the scatter disk
-     * @param rays  the number of rays in the beam
-     * @param level the remaining recursion depth
-     * @param k     the accumulated attenuation along the ray path
-     * @param kx    the attenuation factor of the effect
+     * @param scatter the scatter disk
+     * @param rays    the number of rays in the beam
+     * @param level   the remaining recursion depth
+     * @param k       the accumulated attenuation along the ray path
+     * @param kx      the attenuation factor of the effect
      * @return the average color of the beam
      */
-    private Color sampleRandomBeam(ScatterDisk disk, int rays, int level, Double3 k, Double3 kx) {
+    private Color sampleRandomBeam(ScatterDisk scatter, int rays, int level, Double3 k, Double3 kx) {
         ThreadLocalRandom random = ThreadLocalRandom.current();
-        Color sum = traceSecondaryRay(disk.idealRay(), level, k, kx);
+        Color sum = traceSecondaryRay(scatter.idealRay(), level, k, kx);
         int count = 1;
         for (int i = 1; i < rays; i++) {
-            // sqrt spreads the points uniformly over the disk area rather than crowding the center
-            double r = disk.radius() * Math.sqrt(random.nextDouble());
-            double theta = 2 * Math.PI * random.nextDouble();
-            Ray ray = disk.rayThrough(disk.pointAt(r * Math.cos(theta), r * Math.sin(theta)));
+            Ray ray = scatter.rayThrough(scatter.disk().randomPoint(random));
             if (ray != null) {
                 sum = sum.add(traceSecondaryRay(ray, level, k, kx));
                 count++;
@@ -341,31 +405,26 @@ class SimpleRayTracer extends RayTracerBase {
     }
 
     /**
-     * The disk that the secondary rays of a blurry material are scattered over: centered at unit
-     * distance along the ideal ray and orthogonal to it.
+     * A disk in space, over which sample rays are spread.
      *
-     * @param idealRay the ideal secondary ray
-     * @param normal   the surface normal at the ray origin
-     * @param radius   the radius of the disk
-     * @param center   the center of the disk
-     * @param vX       the first in-plane axis of the disk
-     * @param vY       the second in-plane axis of the disk
+     * @param center the center of the disk
+     * @param vX     the first in-plane unit axis
+     * @param vY     the second in-plane unit axis
+     * @param radius the radius of the disk
      */
-    private record ScatterDisk(Ray idealRay, Vector normal, double radius, Point center, Vector vX, Vector vY) {
+    private record Disk(Point center, Vector vX, Vector vY, double radius) {
 
         /**
-         * Creates the scatter disk of an ideal ray.
+         * Creates a disk orthogonal to an axis.
          *
-         * @param idealRay the ideal secondary ray
-         * @param normal   the surface normal at the ray origin
-         * @param radius   the radius of the disk
-         * @return the scatter disk
+         * @param center the center of the disk
+         * @param axis   the unit axis the disk faces
+         * @param radius the radius of the disk
+         * @return the disk
          */
-        static ScatterDisk of(Ray idealRay, Vector normal, double radius) {
-            Vector direction = idealRay.direction();
-            Vector vX = direction.orthogonal();
-            return new ScatterDisk(idealRay, normal, radius, idealRay.origin().add(direction), vX,
-                    direction.crossProduct(vX).normalize());
+        static Disk facing(Point center, Vector axis, double radius) {
+            Vector vX = axis.orthogonal();
+            return new Disk(center, vX, axis.crossProduct(vX).normalize(), radius);
         }
 
         /**
@@ -380,6 +439,43 @@ class SimpleRayTracer extends RayTracerBase {
             if (!isZero(x)) p = p.add(vX.scale(x));
             if (!isZero(y)) p = p.add(vY.scale(y));
             return p;
+        }
+
+        /**
+         * Picks a uniformly distributed random point of the disk.
+         *
+         * @param random the random generator
+         * @return a random point of the disk
+         */
+        Point randomPoint(ThreadLocalRandom random) {
+            // sqrt spreads the points uniformly over the disk area rather than crowding the center
+            double r = radius * Math.sqrt(random.nextDouble());
+            double theta = 2 * Math.PI * random.nextDouble();
+            return pointAt(r * Math.cos(theta), r * Math.sin(theta));
+        }
+    }
+
+    /**
+     * The disk that the secondary rays of a blurry material are scattered over: centered at unit
+     * distance along the ideal ray and orthogonal to it.
+     *
+     * @param idealRay the ideal secondary ray
+     * @param normal   the surface normal at the ray origin
+     * @param disk     the scatter disk
+     */
+    private record ScatterDisk(Ray idealRay, Vector normal, Disk disk) {
+
+        /**
+         * Creates the scatter disk of an ideal ray.
+         *
+         * @param idealRay the ideal secondary ray
+         * @param normal   the surface normal at the ray origin
+         * @param radius   the radius of the disk
+         * @return the scatter disk
+         */
+        static ScatterDisk of(Ray idealRay, Vector normal, double radius) {
+            Vector direction = idealRay.direction();
+            return new ScatterDisk(idealRay, normal, Disk.facing(idealRay.origin().add(direction), direction, radius));
         }
 
         /**

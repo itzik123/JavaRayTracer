@@ -39,6 +39,12 @@ public class Material {
     /** Number of rays in the scattered beam when {@link #blurRadius} is positive. */
     public int blurGlassRays = 1;
 
+    /**
+     * Index of refraction of a transparent solid. At 1, rays pass straight through; above it,
+     * they bend by Snell's law and part of the light is reflected (Fresnel), as in real glass.
+     * Meant for closed shapes, whose rays both enter and leave.
+     */
+    public double ior = 1;
 
     /** Creates a material with no diffuse, specular, reflective or transparent response. */
     public Material() {
@@ -189,6 +195,19 @@ public class Material {
     public Material setBlurGlassRays(int blurGlassRays) {
         if (blurGlassRays < 1) throw new IllegalArgumentException("Beam must contain at least one ray");
         this.blurGlassRays = blurGlassRays;
+        return this;
+    }
+
+    /**
+     * Sets the index of refraction (1 for air, about 1.5 for glass, 2.4 for diamond).
+     *
+     * @param ior the index of refraction
+     * @return this material
+     * @throws IllegalArgumentException if the index is below 1
+     */
+    public Material setIor(double ior) {
+        if (ior < 1) throw new IllegalArgumentException("Index of refraction must be at least 1");
+        this.ior = ior;
         return this;
     }
 }
