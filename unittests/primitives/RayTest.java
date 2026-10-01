@@ -1,120 +1,112 @@
 package primitives;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
 import org.junit.jupiter.api.Test;
 
-
-import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-
 /**
- * Unit tests for class {@link Ray}.
+ * Unit tests for {@link Ray}.
+ * <p>
  * The tests verify:
  * <ul>
- * <li>ray constructor validity</li>
+ * <li>{@link Ray#Ray(Point, Vector)}</li>
+ * <li>{@link Ray#Ray(Point, Vector, Vector)}</li>
  * <li>{@link Ray#getPoint(double)}</li>
+ * <li>{@link Ray#findClosestPoint(List)}</li>
  * </ul>
- * Tests follow the methodology of
- * Equivalence Partitions (EP).
+ * Tests follow the Equivalence Partitions (EP) and Boundary Values (BVA) methodology.
+ *
  * @author ityy35-bit
  */
 class RayTest {
 
     /** Default constructor to satisfy JavaDoc generator */
     RayTest() { /* to satisfy JavaDoc generator */ }
-    
-    /** origin point for ray tests */
-    private static final Point  POINT        = new Point(-1, 1, 1);
 
-    /** direction vector for ray test (not normalized) */
-    private static final Vector  VECTOR       = new Vector(2, 0, 1);
+    /** Delta value for accuracy when comparing double values */
+    private static final double DELTA = 1e-6;
+
+    /** A ray from the origin along the X axis */
+    private static final Ray RAY = new Ray(Point.ZERO, Vector.AXIS_X);
+    /** The point (1,0,0), closest to the ray origin among the test points */
+    private static final Point NEAR = new Point(1, 0, 0);
+    /** The point (2,0,0) */
+    private static final Point MIDDLE = new Point(2, 0, 0);
+    /** The point (3,0,0), farthest from the ray origin among the test points */
+    private static final Point FAR = new Point(3, 0, 0);
 
     /**
-     * Delta value for accuracy when comparing double values.
-     */
-    private static final double DELTA         = 1e-6;
-    
-
-
-    /**
-     * Test method for {@link Ray#Ray(Point,Vector)}.
-     * Verifies correct and incorrect ray constructions.
+     * Test method for {@link Ray#Ray(Point, Vector)}.
      */
     @Test
     void testConstructor() {
         // ============ Equivalence Partitions Tests ==============
 
-        // TC01: regular addition
-        final  Ray ray = new Ray(POINT,VECTOR);
-        assertEquals(1,ray.direction().lengthSquared(), DELTA,
-                "ERROR: direction vector not normalized");
-
+        // TC01: The direction of a ray is normalized
+        Ray ray = new Ray(new Point(-1, 1, 1), new Vector(2, 0, 1));
+        assertEquals(1, ray.direction().length(), DELTA, "The ray direction is not normalized");
     }
 
-    /**point (2,0,0) used for test*/
-    private static final Point EP01 = new Point(2,0,0);
-    /**point (-2,0,0) used for test*/
-    private static final Point EP02 = new Point(-2,0,0);
-    /**point (0,0,0) used for test*/
-    private static final Point BV11 = new Point(0,0,0);
-    /**ray used for test*/
-    private static final Ray RAY = new Ray(new Point(0,0,0), new Vector(1,0,0));
+    /**
+     * Test method for {@link Ray#Ray(Point, Vector, Vector)}.
+     */
+    @Test
+    void testOffsetConstructor() {
+        // ============ Equivalence Partitions Tests ==============
+
+        // TC01: A ray leaving the front of a surface is pushed off to the front
+        Ray front = new Ray(Point.ZERO, new Vector(1, 1, 0), Vector.AXIS_Y);
+        assertEquals(0.1, front.origin().getY(), DELTA, "The ray was not pushed towards its direction");
+
+        // TC02: A ray leaving the back of a surface is pushed off to the back
+        Ray back = new Ray(Point.ZERO, new Vector(1, -1, 0), Vector.AXIS_Y);
+        assertEquals(-0.1, back.origin().getY(), DELTA, "The ray was not pushed towards its direction");
+    }
 
     /**
      * Test method for {@link Ray#getPoint(double)}.
      */
     @Test
-    void testGetPoint(){
+    void testGetPoint() {
         // ============ Equivalence Partitions Tests ==============
 
-        // TC01: positive t
-        assertEquals(EP01, RAY.getPoint(2), "ERROR: wrong point");
+        // TC01: Positive distance
+        assertEquals(MIDDLE, RAY.getPoint(2), "getPoint() returned a wrong point for a positive distance");
 
-        // TC01: negative t
-        assertEquals(EP02, RAY.getPoint(-2), "ERROR: wrong point");
+        // TC02: Negative distance
+        assertEquals(new Point(-2, 0, 0), RAY.getPoint(-2), "getPoint() returned a wrong point for a negative distance");
 
         // =============== Boundary Values Tests ==================
 
-        // TC11: t equals 0
-        assertEquals(BV11, RAY.getPoint(0), "ERROR: wrong point");
-
+        // TC11: Zero distance
+        assertEquals(Point.ZERO, RAY.getPoint(0), "getPoint() returned a wrong point for zero distance");
     }
 
-    /**point (2,0,0) used for test*/
-    private static final Point POINT1 = new Point(2,0,0);
-    /**point (1,0,0) used for test*/
-    private static final Point POINT2 = new Point(1,0,0);
-    /**point (3,0,0) used for test*/
-    private static final Point POINT3 = new Point(3,0,0);
-    /**list used for tests*/
-    private static final List<Point> EP1 = List.of(POINT1, POINT2, POINT3);
-    /**list used for tests*/
-    private static final List<Point> BV1 = null;
-    /**list used for tests*/
-    private static final List<Point> BV2 = List.of(POINT2, POINT1, POINT3);
-    /**list used for tests*/
-    private static final List<Point> BV3 = List.of(POINT3, POINT1, POINT2);
-
+    /**
+     * Test method for {@link Ray#findClosestPoint(List)}.
+     */
     @Test
     void testFindClosestPoint() {
         // ============ Equivalence Partitions Tests ==============
 
-        // TC01: the closest point is in the middle
-        assertEquals(POINT2, RAY.findClosestPoint(EP1), "ERROR: didn't return the right point in ep1");
+        // TC01: The closest point is in the middle of the list
+        assertEquals(NEAR, RAY.findClosestPoint(List.of(MIDDLE, NEAR, FAR)), "Wrong closest point");
 
         // =============== Boundary Values Tests ==================
 
-        // TC11: empty list
-        assertNull(RAY.findClosestPoint(BV1), "ERROR: return a point in an empty list");
+        // TC11: An empty list
+        assertNull(RAY.findClosestPoint(List.of()), "findClosestPoint() of an empty list is not null");
 
-        // TC12: the closest point is in the beginning
-        assertEquals(POINT2, RAY.findClosestPoint(BV2), "ERROR: didn't return the right point in bv2");
+        // TC12: A null list
+        assertNull(RAY.findClosestPoint(null), "findClosestPoint() of a null list is not null");
 
-        // TC13: the closest point is in the end
-        assertEquals(POINT2, RAY.findClosestPoint(BV3), "ERROR: didn't return the right point in bv3");
+        // TC13: The closest point is the first in the list
+        assertEquals(NEAR, RAY.findClosestPoint(List.of(NEAR, MIDDLE, FAR)), "Wrong closest point");
 
-
+        // TC14: The closest point is the last in the list
+        assertEquals(NEAR, RAY.findClosestPoint(List.of(FAR, MIDDLE, NEAR)), "Wrong closest point");
     }
 }

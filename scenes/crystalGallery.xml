@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scene background-color="3 4 12" name="Crystal Gallery">
+    <ambient-light color="15 11 9"/>
+    <lights>
+        <directional-light color="180 185 200" direction="1 -2 -1"/>
+
+        <point-light color="400 380 350" position="-380 380 320"
+                     kL="0.00002" kQ="0.000002" radius="30"/>
+
+        <spot-light color="300 295 290" position="-170 450 80" direction="0 -1 -0.3"
+                    kL="0.00003" kQ="0.000003" narrow-beam="4" radius="60"/>
+
+        <spot-light color="380 360 330" position="0 500 -220" direction="0 -1 -0.5"
+                    kL="0.00002" kQ="0.000002" narrow-beam="2" radius="100"/>
+    </lights>
+    <geometries>
+        <plane point="0 -200 0" normal="0 1 0"
+               emission="28 16 7" kD="0.50" kS="0.15" kR="0.25" nShininess="25"
+               blurRadius="0.1" blurGlassRays="36" />
+
+        <plane point="0 0 -500" normal="0 0 1"
+               emission="10 10 40" kD="0.70" nShininess="5"/>
+
+        <sphere center="-170 -100 -100" radius="100"
+                emission="6 18 75" kD="0.05" kS="0.20" kT="0.65" nShininess="600"
+                blurRadius="0.15" blurGlassRays="64" />
+
+        <sphere center="210 -100 -180" radius="100"
+                emission="5 10 45" kD="0.05" kS="0.10" kR="0.75" nShininess="1000"
+                blurRadius="0.1" blurGlassRays="24" />
+
+        <sphere center="50 -185 -300" radius="15"
+                emission="120 30 4" kD="0.70" kS="0.20" nShininess="20"/>
+
+        <sphere center="-50 -190 -440" radius="10"
+                emission="4 100 120" kD="0.40" kS="0.50" nShininess="200"/>
+
+        <triangle p0="-100 -200 -280" p1="100 -200 -280" p2="0 80 -370"
+                  emission="80 55 6" kD="0.45" kS="0.35" nShininess="300"/>
+        <triangle p0="100 -200 -280" p1="100 -200 -460" p2="0 80 -370"
+                  emission="90 38 5" kD="0.45" kS="0.35" nShininess="300"/>
+        <triangle p0="100 -200 -460" p1="-100 -200 -460" p2="0 80 -370"
+                  emission="55 28 4" kD="0.45" kS="0.35" nShininess="300"/>
+        <triangle p0="-100 -200 -460" p1="-100 -200 -280" p2="0 80 -370"
+                  emission="75 48 6" kD="0.45" kS="0.35" nShininess="300"/>
+
+        <cylinder axis-origin="-170 -200 -100" axis-dir="0 1 0" radius="28" height="100"
+                  emission="18 8 70" kD="0.20" kS="0.30" kR="0.35" nShininess="400"/>
+
+        <tube axis-origin="0 100 -475" axis-dir="1 0 0" radius="6"
+              emission="22 50 22" kD="0.10" kS="0.65" nShininess="700"/>
+
+        <polygon p0="-160 200 -498" p1="-160 -140 -498"
+                 p2="160 -140 -498" p3="160 200 -498"
+                 emission="60 24 6" kD="0.50" kS="0.25" nShininess="60"/>
+    </geometries>
+</scene>

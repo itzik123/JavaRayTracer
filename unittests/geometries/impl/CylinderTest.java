@@ -2,322 +2,265 @@ package geometries.impl;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
-
+import primitives.AABB;
 import primitives.Point;
-import primitives.Vector;
 import primitives.Ray;
+import primitives.Vector;
 
 import java.util.List;
 
 /**
- * Unit tests for class {@link Cylinder}.
+ * Unit tests for {@link Cylinder}.
+ * <p>
  * The tests verify:
  * <ul>
+ * <li>{@link Cylinder#Cylinder(double, Ray, double)}</li>
  * <li>{@link Cylinder#getNormal(Point)}</li>
  * <li>{@link Cylinder#findIntersections(Ray)}</li>
+ * <li>{@link Cylinder#getBoundingBox()}</li>
  * </ul>
- * Tests follow the methodology of
- * Equivalence Partitions (EP) and Boundary Values (BVA).
+ * Tests follow the Equivalence Partitions (EP) and Boundary Values (BVA) methodology.
+ *
  * @author itzik123
  */
 class CylinderTest {
+
     /** Default constructor to satisfy JavaDoc generator */
     CylinderTest() { /* to satisfy JavaDoc generator */ }
 
-    /** Vertex (0,0,0) used in Cylinder tests */
-    private static final Point  POINT_ORIGIN    = new Point(0, 0, 0);
-    /** direction vector used in tests */
-    private static final Vector VECTOR          = new Vector(0, 0, 1);
-
-    /** Vertex (1,0,1) used in Cylinder tests (Point on the side surface) */
-    private static final Point  POINT_EP1       = new Point(1, 0, 1);
-    /** Vertex (0.5,0,0) used in Cylinder tests (Point on the bottom base) */
-    private static final Point  POINT_EP2       = new Point(0.5, 0, 0);
-    /** Vertex (0.5,0,3) used in Cylinder tests (Point on the top base) */
-    private static final Point  POINT_EP3       = new Point(0.5, 0, 3);
-
-    /** Vertex (1,0,0) used in Cylinder tests (Point on the edge of the bottom base) */
-    private static final Point  POINT_BVA1      = new Point(1, 0, 0);
-    /** Vertex (1,0,3) used in Cylinder tests (Point on the edge of the top base) */
-    private static final Point  POINT_BVA2      = new Point(1, 0, 3);
-    /** Vertex (0,0,0) used in Cylinder tests (Point at the center of the bottom base) */
-    private static final Point  POINT_BVA3      = new Point(0, 0, 0);
-    /** Vertex (0,0,3) used in Cylinder tests (Point at the center of the top base) */
-    private static final Point  POINT_BVA4      = new Point(0, 0, 3);
-
-    /** normal vector for the side surface */
-    private static final Vector VECTOR_NORMAL1  = new Vector(1, 0, 0);
-    /** normal vector for the bottom base */
-    private static final Vector VECTOR_NORMAL2  = new Vector(0, 0, -1);
-    /** normal vector for the top base */
-    private static final Vector VECTOR_NORMAL3  = new Vector(0, 0, 1);
+    /** The Z axis, used as the axis of the test cylinders */
+    private static final Ray Z_AXIS = new Ray(Point.ZERO, Vector.AXIS_Z);
+    /** A cylinder of radius 1 around the Z axis, from z = 0 to z = 2 */
+    private static final Cylinder CYLINDER = new Cylinder(1, Z_AXIS, 2);
+    /** Message for wrong intersection results */
+    private static final String ERROR_INTERSECTION = "Wrong cylinder intersection result";
+    /** The X coordinate of the side points where y = 0.5 */
+    private static final double X_AT_HALF = Math.sqrt(3) / 2;
 
     /**
-     * test method for {@link Cylinder#getNormal(Point)}
+     * Test method for {@link Cylinder#Cylinder(double, Ray, double)}.
+     */
+    @Test
+    void testConstructor() {
+        // =============== Boundary Values Tests ==================
+
+        // TC11: Zero height
+        assertThrows(IllegalArgumentException.class, () -> new Cylinder(1, Z_AXIS, 0),
+                "Constructed a cylinder with zero height");
+    }
+
+    /**
+     * Test method for {@link Cylinder#getNormal(Point)}.
      */
     @Test
     void testGetNormal() {
-        Cylinder cylinder = new Cylinder(1, new Ray(POINT_ORIGIN, VECTOR), 3);
+        Cylinder cylinder = new Cylinder(1, Z_AXIS, 3);
+        Vector down = new Vector(0, 0, -1);
 
         // ============ Equivalence Partitions Tests ==============
 
-        // TC01: test a normal on the side surface of the cylinder
-        assertEquals(VECTOR_NORMAL1, cylinder.getNormal(POINT_EP1),
-                "ERROR: Failed returning the correct normal on the side surface of the cylinder");
+        // TC01: A point on the side
+        assertEquals(Vector.AXIS_X, cylinder.getNormal(new Point(1, 0, 1)), "Wrong normal on the side");
 
-        // TC02: test a normal on the bottom base of the cylinder
-        assertEquals(VECTOR_NORMAL2, cylinder.getNormal(POINT_EP2),
-                "ERROR: Failed returning the correct normal on the bottom base of the cylinder");
+        // TC02: A point on the bottom base
+        assertEquals(down, cylinder.getNormal(new Point(0.5, 0, 0)), "Wrong normal on the bottom base");
 
-        // TC03: test a normal on the top base of the cylinder
-        assertEquals(VECTOR_NORMAL3, cylinder.getNormal(POINT_EP3),
-                "ERROR: Failed returning the correct normal on the top base of the cylinder");
+        // TC03: A point on the top base
+        assertEquals(Vector.AXIS_Z, cylinder.getNormal(new Point(0.5, 0, 3)), "Wrong normal on the top base");
 
         // =============== Boundary Values Tests ==================
 
-        // TC11: test a normal on the edge of the bottom base
-        assertEquals(VECTOR_NORMAL2, cylinder.getNormal(POINT_BVA1),
-                "ERROR: Failed returning the correct normal on the edge of the bottom base");
+        // TC11: A point on the rim of the bottom base
+        assertEquals(down, cylinder.getNormal(new Point(1, 0, 0)), "Wrong normal on the bottom rim");
 
-        // TC12: test a normal on the edge of the top base
-        assertEquals(VECTOR_NORMAL3, cylinder.getNormal(POINT_BVA2),
-                "ERROR: Failed returning the correct normal on the edge of the top base");
+        // TC12: A point on the rim of the top base
+        assertEquals(Vector.AXIS_Z, cylinder.getNormal(new Point(1, 0, 3)), "Wrong normal on the top rim");
 
-        // TC13: test a normal exactly at the center of the bottom base (origin)
-        assertEquals(VECTOR_NORMAL2, cylinder.getNormal(POINT_BVA3),
-                "ERROR: Failed returning the correct normal exactly at the center of the bottom base");
+        // TC13: The center of the bottom base
+        assertEquals(down, cylinder.getNormal(Point.ZERO), "Wrong normal at the bottom center");
 
-        // TC14: test a normal exactly at the center of the top base
-        assertEquals(VECTOR_NORMAL3, cylinder.getNormal(POINT_BVA4),
-                "ERROR: Failed returning the correct normal exactly at the center of the top base");
+        // TC14: The center of the top base
+        assertEquals(Vector.AXIS_Z, cylinder.getNormal(new Point(0, 0, 3)), "Wrong normal at the top center");
     }
-
-    /** Cylinder used in tests (radius 1, origin (0,0,0), direction (0,0,1), height 2) */
-    private static final Cylinder CYLINDER = new Cylinder(1d, new Ray(POINT_ORIGIN, VECTOR), 2d);
-
-    /** Error message for cylinder intersection failures */
-    private static final String ERROR_CYLINDER_INTERSECTION = "Wrong cylinder intersection result";
-
-    /** Vector (1,0,0) used for ray directions in tests */
-    private static final Vector DIR_X = new Vector(1, 0, 0);
-
-    // ================== Rays for Plane Z=0 (Bottom Base) ==================
-    private static final Ray EP01 = new Ray(new Point(2, 0, 0), new Vector(1, 1, 0));
-    private static final Ray EP02 = new Ray(new Point(-2, -3, 0), new Vector(1, 1, 0));
-    private static final Ray EP03 = new Ray(new Point(0.5, 0.5, 0), DIR_X);
-    private static final Ray EP04 = new Ray(new Point(1.5, 0.5, 0), DIR_X);
-
-    private static final Ray BV11 = new Ray(new Point(1, 0, 0), new Vector(-1, -1, 0));
-    private static final Ray BV12 = new Ray(new Point(1, 0, 0), new Vector(1, 1, 0));
-
-    private static final Ray BV21 = new Ray(new Point(-2, 0, 0), DIR_X);
-    private static final Ray BV22 = new Ray(new Point(-1, 0, 0), DIR_X);
-    private static final Ray BV23 = new Ray(new Point(0.5, 0, 0), DIR_X);
-    private static final Ray BV24 = new Ray(new Point(0, 0, 0), DIR_X);
-    private static final Ray BV25 = new Ray(new Point(1, 0, 0), DIR_X);
-    private static final Ray BV26 = new Ray(new Point(2, 0, 0), DIR_X);
-
-    private static final Ray BV31 = new Ray(new Point(1, 1, 0), DIR_X);
-    private static final Ray BV32 = new Ray(new Point(0, 1, 0), DIR_X);
-    private static final Ray BV33 = new Ray(new Point(-1, 1, 0), DIR_X);
-
-    private static final Ray BV41 = new Ray(new Point(0, 2, 0), DIR_X);
-    private static final Ray BV42 = new Ray(new Point(0, 0.5, 0), DIR_X);
-
-    // ================== Rays & Expected for Plane Z=1 (Middle of Cylinder) ==================
-    private static final Ray EP05 = new Ray(new Point(2, 0, 1), new Vector(1, 1, 0));
-    private static final Ray EP06 = new Ray(new Point(-2, -3, 1), new Vector(1, 1, 0));
-    private static final Ray EP07 = new Ray(new Point(0.5, 0.5, 1), DIR_X);
-    private static final Ray EP08 = new Ray(new Point(1.5, 0.5, 1), DIR_X);
-
-    private static final Ray BV13 = new Ray(new Point(1, 0, 1), new Vector(-1, -1, 0));
-    private static final Ray BV14 = new Ray(new Point(1, 0, 1), new Vector(1, 1, 0));
-
-    private static final Ray BV27 = new Ray(new Point(-2, 0, 1), DIR_X);
-    private static final Ray BV28 = new Ray(new Point(-1, 0, 1), DIR_X);
-    private static final Ray BV29 = new Ray(new Point(0.5, 0, 1), DIR_X);
-    private static final Ray BV2_10 = new Ray(new Point(0, 0, 1), DIR_X);
-    private static final Ray BV2_11 = new Ray(new Point(1, 0, 1), DIR_X);
-    private static final Ray BV2_12 = new Ray(new Point(2, 0, 1), DIR_X);
-
-    private static final Ray BV34 = new Ray(new Point(1, 1, 1), DIR_X);
-    private static final Ray BV35 = new Ray(new Point(0, 1, 1), DIR_X);
-    private static final Ray BV36 = new Ray(new Point(-1, 1, 1), DIR_X);
-
-    private static final Ray BV43 = new Ray(new Point(0, 2, 1), DIR_X);
-    private static final Ray BV44 = new Ray(new Point(0, 0.5, 1), DIR_X);
-
-    // Expected Intersections for Z=1 (Sorted from closest to farthest)
-    private static final List<Point> INTERSECTION_EP06 = List.of(new Point(0, -1, 1), new Point(1, 0, 1));
-    private static final List<Point> INTERSECTION_EP07 = List.of(new Point(0.8660254037844386, 0.5, 1));
-    private static final List<Point> INTERSECTION_BV13 = List.of(new Point(0, -1, 1));
-    private static final List<Point> INTERSECTION_BV27 = List.of(new Point(-1, 0, 1), new Point(1, 0, 1));
-    private static final List<Point> INTERSECTION_BV28 = List.of(new Point(1, 0, 1));
-    private static final List<Point> INTERSECTION_BV29 = List.of(new Point(1, 0, 1));
-    private static final List<Point> INTERSECTION_BV2_10 = List.of(new Point(1, 0, 1));
-    private static final List<Point> INTERSECTION_BV44 = List.of(new Point(0.8660254037844386, 0.5, 1));
-
-    // ================== Special Cylinder Rays & Expected Results ==================
-
-    // ---- Group EP (Cross-surface hits): Rays crossing multiple surface types ----
-    /** Ray starts below, crosses bottom base and top base */
-    private static final Ray EP09 = new Ray(new Point(0, 0, -1), new Vector(0, 0, 1));
-    /** Ray starts below, crosses bottom base and exits through the side */
-    private static final Ray EP10 = new Ray(new Point(0, 0, -1), new Vector(1, 0, 2));
-    /** Ray starts outside on Z=0 plane, goes inside through side, exits through top base */
-    private static final Ray EP11 = new Ray(new Point(2, 0, 0), new Vector(-1, 0, 1));
-
-    private static final List<Point> INTERSECTION_EP09 = List.of(new Point(0, 0, 0), new Point(0, 0, 2));
-    private static final List<Point> INTERSECTION_EP10 = List.of(new Point(0.5, 0, 0), new Point(1, 0, 1));
-    private static final List<Point> INTERSECTION_EP11 = List.of(new Point(1, 0, 1), new Point(0, 0, 2));
-
-    // ---- Group 5: Rays starting on the bottom base (Z=0) and going IN ----
-    /** Starts at origin, goes straight up to top base center */
-    private static final Ray BV51 = new Ray(POINT_ORIGIN, new Vector(0, 0, 1));
-    /** Starts at origin, angled to hit the side */
-    private static final Ray BV52 = new Ray(POINT_ORIGIN, new Vector(1, 0, 1));
-    /** Starts at origin, angled to hit exactly the top edge */
-    private static final Ray BV53 = new Ray(POINT_ORIGIN, new Vector(1, 0, 2));
-    /** Starts on bottom base (not center), goes straight up */
-    private static final Ray BV54 = new Ray(new Point(0.5, 0, 0), new Vector(0, 0, 1));
-    /** Starts on bottom edge, goes diagonally to opposite top edge */
-    private static final Ray BV55 = new Ray(new Point(1, 0, 0), new Vector(-1, 0, 1));
-
-    private static final List<Point> INTERSECTION_BV51 = List.of(new Point(0, 0, 2));
-    private static final List<Point> INTERSECTION_BV52 = List.of(new Point(1, 0, 1));
-    private static final List<Point> INTERSECTION_BV53 = List.of(new Point(1, 0, 2));
-    private static final List<Point> INTERSECTION_BV54 = List.of(new Point(0.5, 0, 2));
-    private static final List<Point> INTERSECTION_BV55 = List.of(new Point(-1, 0, 2));
-
-    // ---- Group 6: Rays starting on top base (Z=2) or above, going OUT/AWAY ----
-    /** Starts at top base center, goes up */
-    private static final Ray BV61 = new Ray(new Point(0, 0, 2), new Vector(0, 0, 1));
-    /** Starts at top edge, goes outward */
-    private static final Ray BV62 = new Ray(new Point(1, 0, 2), new Vector(1, 0, 1));
-    /** Ray passes completely above the cylinder, parallel to top face */
-    private static final Ray BV63 = new Ray(new Point(0, 0, 3), new Vector(1, 0, 0));
-    /** Ray parallel to top face, passes exactly through the top edge (tangent) */
-    private static final Ray BV64 = new Ray(new Point(2, 1, 2), new Vector(-1, 0, 0));
-
-    // ---- Group 7: Rays starting strictly INSIDE the cylinder ----
-    /** Starts inside, goes straight up to top base */
-    private static final Ray BV71 = new Ray(new Point(0, 0, 1), new Vector(0, 0, 1));
-    /** Starts inside, goes straight to the side */
-    private static final Ray BV72 = new Ray(new Point(0, 0, 1), new Vector(1, 0, 0));
-    /** Starts inside, angled to hit the top edge exactly */
-    private static final Ray BV73 = new Ray(new Point(0, 0, 1), new Vector(1, 0, 1));
-
-    private static final List<Point> INTERSECTION_BV71 = List.of(new Point(0, 0, 2));
-    private static final List<Point> INTERSECTION_BV72 = List.of(new Point(1, 0, 1));
-    private static final List<Point> INTERSECTION_BV73 = List.of(new Point(1, 0, 2));
 
     /**
      * Test method for {@link Cylinder#findIntersections(Ray)}.
      */
     @Test
     void testFindIntersections() {
-        // All rays here are on the plane of the base, thus creating infinite intersections or none.
-        // We expect null for all of them.
+        // ============ Equivalence Partitions Tests ==============
 
-        // ==== Equivalence Partitions ====
-        assertNull(CYLINDER.findIntersections(EP01), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(EP02), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(EP03), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(EP04), ERROR_CYLINDER_INTERSECTION);
+        // TC01: Ray orthogonal to the axis crosses the side twice (2 points)
+        assertEquals(List.of(new Point(0, -1, 1), new Point(1, 0, 1)),
+                CYLINDER.findIntersections(ray(-2, -3, 1, 1, 1, 0)), ERROR_INTERSECTION);
 
-        // ==== Boundary Values ====
-        // Group 1: Crosses the base (but not center)
-        assertNull(CYLINDER.findIntersections(BV11), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV12), ERROR_CYLINDER_INTERSECTION);
+        // TC02: Ray starts inside and exits through the side (1 point)
+        assertEquals(List.of(new Point(X_AT_HALF, 0.5, 1)),
+                CYLINDER.findIntersections(ray(0.5, 0.5, 1, 1, 0, 0)), ERROR_INTERSECTION);
 
-        // Group 2: Goes through the center
-        assertNull(CYLINDER.findIntersections(BV21), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV22), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV23), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV24), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV25), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV26), ERROR_CYLINDER_INTERSECTION);
+        // TC03: Ray's line is outside the cylinder (0 points)
+        assertNull(CYLINDER.findIntersections(ray(2, 0, 1, 1, 1, 0)), ERROR_INTERSECTION);
 
-        // Group 3: Tangent to the base circle
-        assertNull(CYLINDER.findIntersections(BV31), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV32), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV33), ERROR_CYLINDER_INTERSECTION);
+        // TC04: Ray starts after the cylinder (0 points)
+        assertNull(CYLINDER.findIntersections(ray(1.5, 0.5, 1, 1, 0, 0)), ERROR_INTERSECTION);
 
-        // Group 4: Special cases (orthogonal)
-        assertNull(CYLINDER.findIntersections(BV41), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV42), ERROR_CYLINDER_INTERSECTION);
+        // TC05: Ray crosses both bases (2 points)
+        assertEquals(List.of(Point.ZERO, new Point(0, 0, 2)),
+                CYLINDER.findIntersections(ray(0, 0, -1, 0, 0, 1)), ERROR_INTERSECTION);
 
-        // ==== Equivalence Partitions ====
-        assertNull(CYLINDER.findIntersections(EP05), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_EP06, CYLINDER.findIntersections(EP06), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_EP07, CYLINDER.findIntersections(EP07), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(EP08), ERROR_CYLINDER_INTERSECTION);
+        // TC06: Ray enters through the bottom base and exits through the side (2 points)
+        assertEquals(List.of(new Point(0.5, 0, 0), new Point(1, 0, 1)),
+                CYLINDER.findIntersections(ray(0, 0, -1, 1, 0, 2)), ERROR_INTERSECTION);
 
-        // ==== Boundary Values ====
-        // Group 1: Crosses the cylinder (but not center)
-        assertEquals(INTERSECTION_BV13, CYLINDER.findIntersections(BV13), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV14), ERROR_CYLINDER_INTERSECTION);
+        // TC07: Ray enters through the side and exits through the top base (2 points)
+        assertEquals(List.of(new Point(1, 0, 1), new Point(0, 0, 2)),
+                CYLINDER.findIntersections(ray(2, 0, 0, -1, 0, 1)), ERROR_INTERSECTION);
 
-        // Group 2: Goes through the center axis
-        assertEquals(INTERSECTION_BV27, CYLINDER.findIntersections(BV27), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_BV28, CYLINDER.findIntersections(BV28), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_BV29, CYLINDER.findIntersections(BV29), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_BV2_10, CYLINDER.findIntersections(BV2_10), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV2_11), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV2_12), ERROR_CYLINDER_INTERSECTION);
+        // =============== Boundary Values Tests ==================
 
-        // Group 3: Tangent to the cylinder
-        assertNull(CYLINDER.findIntersections(BV34), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV35), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV36), ERROR_CYLINDER_INTERSECTION);
+        // **** Group 1: Ray lies in the plane of the bottom base (all tests 0 points)
+        // TC11: Ray crosses the rim, not through the center
+        assertAllNull(ray(2, 0, 0, 1, 1, 0), ray(-2, -3, 0, 1, 1, 0), ray(1, 0, 0, -1, -1, 0), ray(1, 0, 0, 1, 1, 0));
 
-        // Group 4: Special cases (orthogonal)
-        assertNull(CYLINDER.findIntersections(BV43), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_BV44, CYLINDER.findIntersections(BV44), ERROR_CYLINDER_INTERSECTION);
+        // TC12: Ray passes through the center
+        assertAllNull(ray(-2, 0, 0, 1, 0, 0), ray(-1, 0, 0, 1, 0, 0), ray(0.5, 0, 0, 1, 0, 0),
+                ray(0, 0, 0, 1, 0, 0), ray(1, 0, 0, 1, 0, 0), ray(2, 0, 0, 1, 0, 0));
 
-        // ==== Equivalence Partitions (Cross-surface hits) ====
-        assertEquals(INTERSECTION_EP09, CYLINDER.findIntersections(EP09), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_EP10, CYLINDER.findIntersections(EP10), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_EP11, CYLINDER.findIntersections(EP11), ERROR_CYLINDER_INTERSECTION);
+        // TC13: Ray is tangent to the rim
+        assertAllNull(ray(1, 1, 0, 1, 0, 0), ray(0, 1, 0, 1, 0, 0), ray(-1, 1, 0, 1, 0, 0));
 
-        // ==== Boundary Values ====
+        // TC14: Ray starts inside or outside the base, orthogonal to the line to the center
+        assertAllNull(ray(0, 2, 0, 1, 0, 0), ray(0, 0.5, 0, 1, 0, 0), ray(0.5, 0.5, 0, 1, 0, 0), ray(1.5, 0.5, 0, 1, 0, 0));
 
-        // Group 5: Rays starting on the bottom base (Z=0) and going IN (1 point expected)
-        assertEquals(INTERSECTION_BV51, CYLINDER.findIntersections(BV51), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_BV52, CYLINDER.findIntersections(BV52), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_BV53, CYLINDER.findIntersections(BV53), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_BV54, CYLINDER.findIntersections(BV54), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_BV55, CYLINDER.findIntersections(BV55), ERROR_CYLINDER_INTERSECTION);
+        // **** Group 2: Ray orthogonal to the axis, between the bases
+        // TC21: Ray starts at the side and goes inside (1 point)
+        assertEquals(List.of(new Point(0, -1, 1)), CYLINDER.findIntersections(ray(1, 0, 1, -1, -1, 0)), ERROR_INTERSECTION);
 
-        // Group 6: Rays starting on or above the top base (Z>=2), going OUT (0 points expected)
-        assertNull(CYLINDER.findIntersections(BV61), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV62), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV63), ERROR_CYLINDER_INTERSECTION);
-        assertNull(CYLINDER.findIntersections(BV64), ERROR_CYLINDER_INTERSECTION);
+        // TC22: Ray starts at the side and goes outside (0 points)
+        assertNull(CYLINDER.findIntersections(ray(1, 0, 1, 1, 1, 0)), ERROR_INTERSECTION);
 
-        // Group 7: Rays starting strictly INSIDE the cylinder (1 point expected)
-        assertEquals(INTERSECTION_BV71, CYLINDER.findIntersections(BV71), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_BV72, CYLINDER.findIntersections(BV72), ERROR_CYLINDER_INTERSECTION);
-        assertEquals(INTERSECTION_BV73, CYLINDER.findIntersections(BV73), ERROR_CYLINDER_INTERSECTION);
+        // TC23: Ray crosses the axis, starting before the cylinder (2 points)
+        assertEquals(List.of(new Point(-1, 0, 1), new Point(1, 0, 1)),
+                CYLINDER.findIntersections(ray(-2, 0, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // TC24: Ray crosses the axis, starting at the side (1 point)
+        assertEquals(List.of(new Point(1, 0, 1)), CYLINDER.findIntersections(ray(-1, 0, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // TC25: Ray crosses the axis, starting inside (1 point)
+        assertEquals(List.of(new Point(1, 0, 1)), CYLINDER.findIntersections(ray(0.5, 0, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // TC26: Ray starts on the axis (1 point)
+        assertEquals(List.of(new Point(1, 0, 1)), CYLINDER.findIntersections(ray(0, 0, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // TC27: Ray on the axis line starts at the side and goes outside (0 points)
+        assertNull(CYLINDER.findIntersections(ray(1, 0, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // TC28: Ray on the axis line starts after the cylinder (0 points)
+        assertNull(CYLINDER.findIntersections(ray(2, 0, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // **** Group 3: Ray is tangent to the side (all tests 0 points)
+        // TC31: Ray starts before the tangent point
+        assertNull(CYLINDER.findIntersections(ray(-1, 1, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // TC32: Ray starts at the tangent point
+        assertNull(CYLINDER.findIntersections(ray(0, 1, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // TC33: Ray starts after the tangent point
+        assertNull(CYLINDER.findIntersections(ray(1, 1, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // **** Group 4: Ray is orthogonal to the line from its start to the axis
+        // TC41: Ray's line is outside the cylinder (0 points)
+        assertNull(CYLINDER.findIntersections(ray(0, 2, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // TC42: Ray starts inside the cylinder (1 point)
+        assertEquals(List.of(new Point(X_AT_HALF, 0.5, 1)),
+                CYLINDER.findIntersections(ray(0, 0.5, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // **** Group 5: Ray starts on the bottom base and goes inside (1 point)
+        // TC51: From the center, straight to the top base
+        assertEquals(List.of(new Point(0, 0, 2)), CYLINDER.findIntersections(ray(0, 0, 0, 0, 0, 1)), ERROR_INTERSECTION);
+
+        // TC52: From the center, to the side
+        assertEquals(List.of(new Point(1, 0, 1)), CYLINDER.findIntersections(ray(0, 0, 0, 1, 0, 1)), ERROR_INTERSECTION);
+
+        // TC53: From the center, exactly to the top rim
+        assertEquals(List.of(new Point(1, 0, 2)), CYLINDER.findIntersections(ray(0, 0, 0, 1, 0, 2)), ERROR_INTERSECTION);
+
+        // TC54: From a general point of the base, straight up
+        assertEquals(List.of(new Point(0.5, 0, 2)), CYLINDER.findIntersections(ray(0.5, 0, 0, 0, 0, 1)),
+                ERROR_INTERSECTION);
+
+        // TC55: From the bottom rim, diagonally to the opposite top rim
+        assertEquals(List.of(new Point(-1, 0, 2)), CYLINDER.findIntersections(ray(1, 0, 0, -1, 0, 1)),
+                ERROR_INTERSECTION);
+
+        // **** Group 6: Ray starts on or above the top base and goes away (all tests 0 points)
+        // TC61: From the top center, up
+        assertNull(CYLINDER.findIntersections(ray(0, 0, 2, 0, 0, 1)), ERROR_INTERSECTION);
+
+        // TC62: From the top rim, outwards
+        assertNull(CYLINDER.findIntersections(ray(1, 0, 2, 1, 0, 1)), ERROR_INTERSECTION);
+
+        // TC63: Above the cylinder, parallel to the top base
+        assertNull(CYLINDER.findIntersections(ray(0, 0, 3, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // TC64: In the plane of the top base, tangent to its rim
+        assertNull(CYLINDER.findIntersections(ray(2, 1, 2, -1, 0, 0)), ERROR_INTERSECTION);
+
+        // **** Group 7: Ray starts strictly inside the cylinder (1 point)
+        // TC71: Straight up to the top base
+        assertEquals(List.of(new Point(0, 0, 2)), CYLINDER.findIntersections(ray(0, 0, 1, 0, 0, 1)), ERROR_INTERSECTION);
+
+        // TC72: Straight to the side
+        assertEquals(List.of(new Point(1, 0, 1)), CYLINDER.findIntersections(ray(0, 0, 1, 1, 0, 0)), ERROR_INTERSECTION);
+
+        // TC73: Exactly to the top rim
+        assertEquals(List.of(new Point(1, 0, 2)), CYLINDER.findIntersections(ray(0, 0, 1, 1, 0, 1)), ERROR_INTERSECTION);
     }
 
-    private static final Cylinder CYLINDER_AABB = new Cylinder(0.5, new Ray(new Point(0, 0, 0), new Vector(0, 1, 0)), 2);
-    // מרכז תחתון (0,0,0), מרכז עליון (0,2,0). רדיוס 0.5.
-    // לכן מינימום: X=-0.5, Y=-0.5, Z=-0.5.
-    // מקסימום: X=0.5, Y=2.5, Z=0.5.
-    private static final primitives.AABB EXPECTED_CYLINDER_AABB = new primitives.AABB(
-            new Point(-0.5, -0.5, -0.5), new Point(0.5, 2.5, 0.5));
-
     /**
-     * test method for bounding box creation.
+     * Test method for {@link Cylinder#getBoundingBox()}.
      */
     @Test
-    void testBoundingBox() {
+    void testGetBoundingBox() {
         // ============ Equivalence Partitions Tests ==============
-        // TC01: Correct AABB for a cylinder
-        CYLINDER_AABB.setBoundingBox();
-        assertEquals(EXPECTED_CYLINDER_AABB, CYLINDER_AABB.getBoundingBox(), "ERROR: Wrong AABB for Cylinder");
+
+        // TC01: Axis-aligned cylinder - the box is exact along the axis
+        Cylinder alongY = new Cylinder(0.5, new Ray(Point.ZERO, Vector.AXIS_Y), 2);
+        assertEquals(new AABB(new Point(-0.5, 0, -0.5), new Point(0.5, 2, 0.5)), alongY.getBoundingBox(),
+                "Wrong bounding box for an axis-aligned cylinder");
+
+        // TC02: Tilted cylinder - each base disk extends r * sqrt(1 - d²) along every axis
+        Cylinder tilted = new Cylinder(1, new Ray(Point.ZERO, new Vector(1, 1, 0)), Math.sqrt(2));
+        double e = Math.sqrt(0.5);
+        assertEquals(new AABB(new Point(-e, -e, -1), new Point(1 + e, 1 + e, 1)), tilted.getBoundingBox(),
+                "Wrong bounding box for a tilted cylinder");
+    }
+
+    /**
+     * Creates a ray.
+     *
+     * @param x  the X coordinate of the origin
+     * @param y  the Y coordinate of the origin
+     * @param z  the Z coordinate of the origin
+     * @param dx the X component of the direction
+     * @param dy the Y component of the direction
+     * @param dz the Z component of the direction
+     * @return the ray
+     */
+    private static Ray ray(double x, double y, double z, double dx, double dy, double dz) {
+        return new Ray(new Point(x, y, z), new Vector(dx, dy, dz));
+    }
+
+    /**
+     * Asserts that none of the rays intersects {@link #CYLINDER}.
+     *
+     * @param rays the rays
+     */
+    private static void assertAllNull(Ray... rays) {
+        for (Ray ray : rays) assertNull(CYLINDER.findIntersections(ray), ERROR_INTERSECTION + " for " + ray);
     }
 }

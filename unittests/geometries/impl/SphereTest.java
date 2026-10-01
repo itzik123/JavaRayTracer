@@ -1,23 +1,30 @@
 package geometries.impl;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import org.junit.jupiter.api.Test;
+import primitives.AABB;
 import primitives.Point;
 import primitives.Ray;
 import primitives.Vector;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 /**
- * Unit tests for class {@link Sphere}.
+ * Unit tests for {@link Sphere}.
+ * <p>
  * The tests verify:
  * <ul>
+ * <li>{@link Sphere#Sphere(Point, double)}</li>
  * <li>{@link Sphere#getNormal(Point)}</li>
  * <li>{@link Sphere#findIntersections(Ray)}</li>
+ * <li>{@link Sphere#calcIntersections(Ray, double)}</li>
+ * <li>{@link Sphere#getBoundingBox()}</li>
  * </ul>
- * Tests follow the methodology of Equivalence Partitions (EP) and Boundary Values (BVA).
+ * Tests follow the Equivalence Partitions (EP) and Boundary Values (BVA) methodology.
+ *
  * @author itzik123
  */
 class SphereTest {
@@ -25,167 +32,144 @@ class SphereTest {
     /** Default constructor to satisfy JavaDoc generator */
     SphereTest() { /* to satisfy JavaDoc generator */ }
 
-    /** Vertex (0,0,0) used in Sphere tests */
-    private static final Point POINT_ORIGIN = new Point(0, 0, 0);
-    /** Vertex (1,0,0) used in Sphere tests */
-    private static final Point POINT_EP = new Point(1, 0, 0);
-    /** normal vector used in tests */
-    private static final Vector VECTOR = new Vector(1, 0, 0);
-
-    /** Sphere used in all tests (center 0,0,0 radius 1) */
-    private static final Sphere SPHERE = new Sphere(POINT_ORIGIN, 1d);
-
-    /** Error message for sphere intersection failures */
-    private static final String ERROR_SPHERE_INTERSECTION = "Wrong sphere intersection result";
-
-    /** Ray used in EP01 test */
-    private static final Ray EP01 = new Ray(new Point(2, 0, 0), new Vector(1, 1, 0));
-    /** Ray used in EP02 test */
-    private static final Ray EP02 = new Ray(new Point(-2, -3, 0), new Vector(1, 1, 0));
-    /** Ray used in EP03 test */
-    private static final Ray EP03 = new Ray(new Point(0.5, 0.5, 0), new Vector(1, 0, 0));
-    /** Ray used in EP04 test */
-    private static final Ray EP04 = new Ray(new Point(1.5, 0.5, 0), new Vector(1, 0, 0));
-
-    /** Ray used in BV11 test (edge)*/
-    private static final Ray BV11 = new Ray(new Point(0, 0, 1), new Vector(-1, -1, -1));
-    /** Ray used in BV12 test (edge)*/
-    private static final Ray BV12 = new Ray(new Point(0, 0, 1), new Vector(1, 1, 1));
-
-    /** Ray used in BV21 test (center)*/
-    private static final Ray BV21 = new Ray(new Point(-2, 0, 0), VECTOR);
-    /** Ray used in BV22 test (center)*/
-    private static final Ray BV22 = new Ray(new Point(-1, 0, 0), VECTOR);
-    /** Ray used in BV23 test (center)*/
-    private static final Ray BV23 = new Ray(new Point(0.5, 0, 0), VECTOR);
-    /** Ray used in BV24 test (center)*/
-    private static final Ray BV24 = new Ray(new Point(0, 0, 0), VECTOR);
-    /** Ray used in BV25 test (center)*/
-    private static final Ray BV25 = new Ray(new Point(1, 0, 0), VECTOR);
-    /** Ray used in BV26 test (center)*/
-    private static final Ray BV26 = new Ray(new Point(2, 0, 0), VECTOR);
-
-    /** Ray used in BV31 test (tangent)*/
-    private static final Ray BV31 = new Ray(new Point(-1, 0, 1), VECTOR);
-    /** Ray used in BV32 test (tangent)*/
-    private static final Ray BV32 = new Ray(new Point(0, 0, 1), VECTOR);
-    /** Ray used in BV33 test (tangent)*/
-    private static final Ray BV33 = new Ray(new Point(1, 0, 1), VECTOR);
-
-    /** Ray used in BV41 test (orthogonal)*/
-    private static final Ray BV41 = new Ray(new Point(0, 2, 0), VECTOR);
-    /** Ray used in BV42 test (orthogonal)*/
-    private static final Ray BV42 = new Ray(new Point(0, 0.5, 0), VECTOR);
-
-    // ================= Expected Intersections Lists =================
-
-    /** Expected intersection points for EP02 test */
-    private static final List<Point> INTERSECTION_EP02 = List.of(new Point(0, -1, 0), new Point(1, 0, 0));
-    /** Expected intersection points for EP03 test */
-    private static final List<Point> INTERSECTION_EP03 = List.of(new Point(0.8660254037844386, 0.5, 0));
-
-    /** Expected intersection points for BV11 test */
-    private static final List<Point> INTERSECTION_BV11 = List.of(new Point(-0.6666666666666667, -0.6666666666666667, 0.3333333333333333));
-
-    /** Expected intersection points for BV21 test */
-    private static final List<Point> INTERSECTION_BV21 = List.of(new Point(-1, 0, 0), new Point(1, 0, 0));
-    /** Expected intersection points for BV22 test */
-    private static final List<Point> INTERSECTION_BV22 = List.of(new Point(1, 0, 0));
-    /** Expected intersection points for BV23 test */
-    private static final List<Point> INTERSECTION_BV23 = List.of(new Point(1, 0, 0));
-    /** Expected intersection points for BV24 test */
-    private static final List<Point> INTERSECTION_BV24 = List.of(new Point(1, 0, 0));
-
-    /** Expected intersection points for BV42 test */
-    private static final List<Point> INTERSECTION_BV42 = List.of(new Point(0.8660254037844386, 0.5, 0));
-
+    /** The unit sphere around the origin */
+    private static final Sphere SPHERE = new Sphere(Point.ZERO, 1);
+    /** Message for wrong intersection results */
+    private static final String ERROR_INTERSECTION = "Wrong sphere intersection result";
+    /** The X coordinate of the sphere points where y = 0.5 on the XY plane */
+    private static final double X_AT_HALF = Math.sqrt(3) / 2;
 
     /**
-     * test method for {@link Sphere#getNormal(Point)}
+     * Test method for {@link Sphere#Sphere(Point, double)}.
+     */
+    @Test
+    void testConstructor() {
+        // =============== Boundary Values Tests ==================
+
+        // TC11: Zero radius
+        assertThrows(IllegalArgumentException.class, () -> new Sphere(Point.ZERO, 0),
+                "Constructed a sphere with zero radius");
+    }
+
+    /**
+     * Test method for {@link Sphere#getNormal(Point)}.
      */
     @Test
     void testGetNormal() {
         // ============ Equivalence Partitions Tests ==============
-        // TC01: test a normal on the sphere
-        assertEquals(VECTOR.normalize(), SPHERE.getNormal(POINT_EP),
-                "ERROR: Failed returning the right normal");
+
+        // TC01: The normal at a point on the sphere
+        assertEquals(Vector.AXIS_X, SPHERE.getNormal(new Point(1, 0, 0)), "Wrong sphere normal");
     }
 
     /**
-     * Test method for {@link Sphere#findIntersections(primitives.Ray)}.
+     * Test method for {@link Sphere#findIntersections(Ray)}.
      */
     @Test
     void testFindIntersections() {
+        Vector alongX = Vector.AXIS_X;
+
         // ============ Equivalence Partitions Tests ==============
 
         // TC01: Ray's line is outside the sphere (0 points)
-        assertNull(SPHERE.findIntersections(EP01), ERROR_SPHERE_INTERSECTION);
+        assertNull(SPHERE.findIntersections(new Ray(new Point(2, 0, 0), new Vector(1, 1, 0))), ERROR_INTERSECTION);
 
         // TC02: Ray starts before and crosses the sphere (2 points)
-        assertEquals(INTERSECTION_EP02, SPHERE.findIntersections(EP02), ERROR_SPHERE_INTERSECTION);
+        assertEquals(List.of(new Point(0, -1, 0), new Point(1, 0, 0)),
+                SPHERE.findIntersections(new Ray(new Point(-2, -3, 0), new Vector(1, 1, 0))), ERROR_INTERSECTION);
 
         // TC03: Ray starts inside the sphere (1 point)
-        assertEquals(INTERSECTION_EP03, SPHERE.findIntersections(EP03), ERROR_SPHERE_INTERSECTION);
+        assertEquals(List.of(new Point(X_AT_HALF, 0.5, 0)),
+                SPHERE.findIntersections(new Ray(new Point(0.5, 0.5, 0), alongX)), ERROR_INTERSECTION);
 
         // TC04: Ray starts after the sphere (0 points)
-        assertNull(SPHERE.findIntersections(EP04), ERROR_SPHERE_INTERSECTION);
+        assertNull(SPHERE.findIntersections(new Ray(new Point(1.5, 0.5, 0), alongX)), ERROR_INTERSECTION);
 
         // =============== Boundary Values Tests ==================
 
-        // **** Group 1: Ray's line crosses the sphere (but not the center)
-        // TC11: Ray starts at sphere and goes inside (1 point)
-        assertEquals(INTERSECTION_BV11, SPHERE.findIntersections(BV11), ERROR_SPHERE_INTERSECTION);
+        // **** Group 1: Ray's line crosses the sphere, but not the center
+        // TC11: Ray starts at the sphere and goes inside (1 point)
+        assertEquals(List.of(new Point(-2d / 3, -2d / 3, 1d / 3)),
+                SPHERE.findIntersections(new Ray(new Point(0, 0, 1), new Vector(-1, -1, -1))), ERROR_INTERSECTION);
 
-        // TC12: Ray starts at sphere and goes outside (0 points)
-        assertNull(SPHERE.findIntersections(BV12), ERROR_SPHERE_INTERSECTION);
+        // TC12: Ray starts at the sphere and goes outside (0 points)
+        assertNull(SPHERE.findIntersections(new Ray(new Point(0, 0, 1), new Vector(1, 1, 1))), ERROR_INTERSECTION);
 
         // **** Group 2: Ray's line goes through the center
         // TC21: Ray starts before the sphere (2 points)
-        assertEquals(INTERSECTION_BV21, SPHERE.findIntersections(BV21), ERROR_SPHERE_INTERSECTION);
+        assertEquals(List.of(new Point(-1, 0, 0), new Point(1, 0, 0)),
+                SPHERE.findIntersections(new Ray(new Point(-2, 0, 0), alongX)), ERROR_INTERSECTION);
 
-        // TC22: Ray starts at sphere and goes inside (1 point)
-        assertEquals(INTERSECTION_BV22, SPHERE.findIntersections(BV22), ERROR_SPHERE_INTERSECTION);
+        // TC22: Ray starts at the sphere and goes inside (1 point)
+        assertEquals(List.of(new Point(1, 0, 0)),
+                SPHERE.findIntersections(new Ray(new Point(-1, 0, 0), alongX)), ERROR_INTERSECTION);
 
         // TC23: Ray starts inside (1 point)
-        assertEquals(INTERSECTION_BV23, SPHERE.findIntersections(BV23), ERROR_SPHERE_INTERSECTION);
+        assertEquals(List.of(new Point(1, 0, 0)),
+                SPHERE.findIntersections(new Ray(new Point(0.5, 0, 0), alongX)), ERROR_INTERSECTION);
 
         // TC24: Ray starts at the center (1 point)
-        assertEquals(INTERSECTION_BV24, SPHERE.findIntersections(BV24), ERROR_SPHERE_INTERSECTION);
+        assertEquals(List.of(new Point(1, 0, 0)),
+                SPHERE.findIntersections(new Ray(Point.ZERO, alongX)), ERROR_INTERSECTION);
 
-        // TC25: Ray starts at sphere and goes outside (0 points)
-        assertNull(SPHERE.findIntersections(BV25), ERROR_SPHERE_INTERSECTION);
+        // TC25: Ray starts at the sphere and goes outside (0 points)
+        assertNull(SPHERE.findIntersections(new Ray(new Point(1, 0, 0), alongX)), ERROR_INTERSECTION);
 
-        // TC26: Ray starts after sphere (0 points)
-        assertNull(SPHERE.findIntersections(BV26), ERROR_SPHERE_INTERSECTION);
+        // TC26: Ray starts after the sphere (0 points)
+        assertNull(SPHERE.findIntersections(new Ray(new Point(2, 0, 0), alongX)), ERROR_INTERSECTION);
 
         // **** Group 3: Ray's line is tangent to the sphere (all tests 0 points)
         // TC31: Ray starts before the tangent point
-        assertNull(SPHERE.findIntersections(BV31), ERROR_SPHERE_INTERSECTION);
+        assertNull(SPHERE.findIntersections(new Ray(new Point(-1, 0, 1), alongX)), ERROR_INTERSECTION);
 
         // TC32: Ray starts at the tangent point
-        assertNull(SPHERE.findIntersections(BV32), ERROR_SPHERE_INTERSECTION);
+        assertNull(SPHERE.findIntersections(new Ray(new Point(0, 0, 1), alongX)), ERROR_INTERSECTION);
 
         // TC33: Ray starts after the tangent point
-        assertNull(SPHERE.findIntersections(BV33), ERROR_SPHERE_INTERSECTION);
+        assertNull(SPHERE.findIntersections(new Ray(new Point(1, 0, 1), alongX)), ERROR_INTERSECTION);
 
-        // **** Group 4: Special cases
-        // TC41: Ray's line is outside sphere, ray is orthogonal to ray start to sphere's center line
-        assertNull(SPHERE.findIntersections(BV41), ERROR_SPHERE_INTERSECTION);
+        // **** Group 4: Ray is orthogonal to the line from its start to the center
+        // TC41: Ray's line is outside the sphere (0 points)
+        assertNull(SPHERE.findIntersections(new Ray(new Point(0, 2, 0), alongX)), ERROR_INTERSECTION);
 
-        // TC42: Ray starts inside, ray is orthogonal to ray start to sphere's center line
-        assertEquals(INTERSECTION_BV42, SPHERE.findIntersections(BV42), ERROR_SPHERE_INTERSECTION);
+        // TC42: Ray starts inside the sphere (1 point)
+        assertEquals(List.of(new Point(X_AT_HALF, 0.5, 0)),
+                SPHERE.findIntersections(new Ray(new Point(0, 0.5, 0), alongX)), ERROR_INTERSECTION);
     }
 
-    private static final primitives.AABB EXPECTED_SPHERE_AABB = new primitives.AABB(new Point(-1, -1, -1), new Point(1, 1, 1));
-
     /**
-     * test method for bounding box creation.
+     * Test method for {@link Sphere#calcIntersections(Ray, double)}.
      */
     @Test
-    void testBoundingBox() {
+    void testCalcIntersectionsWithMaxDistance() {
+        Ray crossing = new Ray(new Point(-2, 0, 0), Vector.AXIS_X);
+
         // ============ Equivalence Partitions Tests ==============
-        // TC01: Correct AABB for a simple sphere
-        SPHERE.setBoundingBox();
-        assertEquals(EXPECTED_SPHERE_AABB, SPHERE.getBoundingBox(), "ERROR: Wrong AABB for Sphere");
+
+        // TC01: Both intersections are within the maximum distance (2 points)
+        assertEquals(2, SPHERE.calcIntersections(crossing, 10).size(), ERROR_INTERSECTION);
+
+        // TC02: Only the near intersection is within the maximum distance (1 point)
+        assertEquals(1, SPHERE.calcIntersections(crossing, 2).size(), ERROR_INTERSECTION);
+
+        // TC03: Both intersections are beyond the maximum distance (0 points)
+        assertNull(SPHERE.calcIntersections(crossing, 0.5), ERROR_INTERSECTION);
+
+        // =============== Boundary Values Tests ==================
+
+        // TC11: Ray from the center with a maximum distance shorter than the radius (0 points)
+        assertNull(SPHERE.calcIntersections(new Ray(Point.ZERO, Vector.AXIS_X), 0.5), ERROR_INTERSECTION);
+    }
+
+    /**
+     * Test method for {@link Sphere#getBoundingBox()}.
+     */
+    @Test
+    void testGetBoundingBox() {
+        // ============ Equivalence Partitions Tests ==============
+
+        // TC01: The box of a sphere around the origin
+        assertEquals(new AABB(new Point(-1, -1, -1), new Point(1, 1, 1)), SPHERE.getBoundingBox(),
+                "Wrong bounding box for a sphere");
     }
 }
