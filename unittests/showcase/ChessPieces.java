@@ -97,8 +97,24 @@ final class ChessPieces {
      * @return the piece
      */
     static Geometries create(Piece piece, Point base, Vector up, Material material) {
+        return create(piece, base, up, up.orthogonal(), material);
+    }
+
+    /**
+     * Creates a piece turned to a given orientation around its axis, so that a piece that moves
+     * from frame to frame keeps its orientation.
+     *
+     * @param piece    the piece
+     * @param base     the center of its base
+     * @param up       the direction of its axis
+     * @param side     a direction orthogonal to the axis, along which the arms of the king's cross
+     *                 point
+     * @param material its material
+     * @return the piece
+     */
+    static Geometries create(Piece piece, Point base, Vector up, Vector side, Material material) {
         Geometries mesh = new Lathe(piece._profile).setSegments(SEGMENTS).setMaterial(material).revolve(base, up);
-        if (piece == Piece.KING) mesh.add(cross(base.add(up.normalize().scale(KING_HEIGHT)), up, material));
+        if (piece == Piece.KING) mesh.add(cross(base.add(up.normalize().scale(KING_HEIGHT)), up, side, material));
         return mesh;
     }
 
@@ -108,12 +124,13 @@ final class ChessPieces {
      *
      * @param base     the center of its bottom
      * @param up       the direction of its upright
+     * @param side     the direction its arms point to, orthogonal to the upright
      * @param material its material
      * @return the cross
      */
-    private static Geometries cross(Point base, Vector up, Material material) {
+    private static Geometries cross(Point base, Vector up, Vector side, Material material) {
         Vector u = up.normalize();
-        Vector right = u.orthogonal();
+        Vector right = side.normalize();
         Vector forward = right.crossProduct(u).normalize();
         double w = 3.5, a = 11, t = 3.5, armBottom = 10, armTop = 17, top = 27;
         // The outline in (right, up), counterclockwise when seen from the front
