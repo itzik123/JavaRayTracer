@@ -44,13 +44,13 @@ public class SpotLight extends PointLight {
         Color pointIntensity = super.getIntensity(p);
 
         Vector l = getL(p);
-        double dirDotL = Math.pow(alignZero(_direction.dotProduct(l)), _narrowBeam);
-
+        // Test the sign before raising to the power, or an even exponent lights up the half-space behind the spot
+        double dirDotL = alignZero(_direction.dotProduct(l));
         if (dirDotL <= 0) {
             return Color.BLACK;
         }
 
-        return pointIntensity.scale(dirDotL);
+        return pointIntensity.scale(Math.pow(dirDotL, _narrowBeam));
     }
 
     public SpotLight setNarrowBeam(int _narrowBeam) {

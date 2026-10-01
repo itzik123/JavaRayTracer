@@ -40,7 +40,7 @@ public class Sphere extends RadialGeometry {
     @Override
     protected List<Intersection> calcIntersectionsHelper(Ray ray, double maxDistance){
         if (ray.origin().equals(_center)) {
-            return List.of(new Intersection(this, ray.getPoint(_radius)));
+            return alignZero(_radius - maxDistance) <= 0 ? List.of(new Intersection(this, ray.getPoint(_radius))) : null;
         }
 
         Vector u = _center.subtract(ray.origin());

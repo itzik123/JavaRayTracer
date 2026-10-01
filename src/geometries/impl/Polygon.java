@@ -100,12 +100,13 @@ public class Polygon extends Geometry {
                }
                v1 = v2;
            }
-           List<Point> planeIntersections = _plane.findIntersections(ray);
+           // Respect maxDistance, so objects beyond a light do not cast shadows
+           List<Intersection> planeIntersections = _plane.calcIntersections(ray, maxDistance);
            if (planeIntersections == null) {
                return null;
            }
 
-           return List.of(new Intersection(this, planeIntersections.getFirst()));
+           return List.of(new Intersection(this, planeIntersections.getFirst().point));
        } catch (IllegalArgumentException _) {
            return null;
        }

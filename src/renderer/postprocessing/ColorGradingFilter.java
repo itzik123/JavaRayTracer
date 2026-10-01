@@ -78,7 +78,7 @@ public class ColorGradingFilter implements PostProcessFilter {
             g = Math.max(0.0f, Math.min(1.0f, g));
             b = Math.max(0.0f, Math.min(1.0f, b));
 
-            resultPixels[i] = new Color((int)(r * 255), (int)(g * 255), (int)(b * 255)).getRGB();
+            resultPixels[i] = new Color((int) Math.round(r * 255), (int) Math.round(g * 255), (int) Math.round(b * 255)).getRGB();
         }
 
         BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);

@@ -15,7 +15,7 @@ class PixelManager {
      * @param col pixel column number
      * @param row pixel row number
      */
-    record Pixel(int col, int row) {
+    record Pixel(int row, int col) {
     }
 
     /** Maximum rows of pixels */

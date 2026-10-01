@@ -36,8 +36,10 @@ public class SceneXMLParser {
      * @throws Exception if parsing fails
      */
     public static Scene parse(String path) throws Exception {
-        Document doc = DocumentBuilderFactory.newInstance()
-                .newDocumentBuilder().parse(new File(path));
+        // Reject DOCTYPE declarations, which XML External Entity (XXE) attacks rely on
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        Document doc = factory.newDocumentBuilder().parse(new File(path));
         Element root = doc.getDocumentElement();
 
         Scene scene = new Scene(root.getAttribute("name"));

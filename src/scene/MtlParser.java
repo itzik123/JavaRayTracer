@@ -27,8 +27,10 @@ public class MtlParser {
                 String[] parts = line.split("\\s+");
 
                 if (parts[0].equals("newmtl")) {
-                    currentMaterial = new ParsedMaterial(parts[1]);
-                    materials.put(parts[1], currentMaterial);
+                    // Material names may contain spaces
+                    String name = line.substring("newmtl".length()).trim();
+                    currentMaterial = new ParsedMaterial(name);
+                    materials.put(name, currentMaterial);
                 }
                 else if (parts[0].equals("Kd") && currentMaterial != null) {
                     int r = (int) (Double.parseDouble(parts[1]) * 255);
@@ -43,7 +45,7 @@ public class MtlParser {
                     currentMaterial.material.setShininess((int) Double.parseDouble(parts[1]));
                 }
                 else if (parts[0].equals("map_Kd") && currentMaterial != null) {
-                    String imageFileName = parts[1];
+                    String imageFileName = line.substring("map_Kd".length()).trim();
                     String fullPath = directoryPath + imageFileName;
 
                     File imgFile = new File(fullPath);
